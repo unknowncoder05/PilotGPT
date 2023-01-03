@@ -146,4 +146,4 @@ def create_project(prompt, target_dir):
 
 
 if __name__ == '__main__':
-    create_project("users can crud posts", './build')
+    create_project("basic crud", './build')

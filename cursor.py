@@ -46,11 +46,14 @@ def open_ai_model_func(model, type='completion'):
         return execute
 
 # utils
+
+
 def list_py_files(dir_path: str):
     for root, dirs, files in os.walk(dir_path):
         for file in files:
             if file.endswith('.py'):
                 yield os.path.join(root, file)
+
 
 def node_verbose_definition(node, indent: str = '') -> str:
     result = ''
@@ -66,16 +69,18 @@ def node_verbose_definition(node, indent: str = '') -> str:
         result += '\n'
     elif isinstance(node, ast.Assign):
         result += f'{indent}'
-        print(">>>>>>>><",' = '.join([node_verbose_definition(target) for target in node.targets]))
-        result += ' = '.join([node_verbose_definition(target) for target in node.targets])
+        result += ' = '.join([node_verbose_definition(target)
+                             for target in node.targets])
         result += f' = {node_verbose_definition(node.value)}\n'
     elif isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
         is_async = isinstance(node, ast.AsyncFunctionDef)
         result += f'{indent}'
-        result += ''.join(["@"+node_verbose_definition(decorator)+"\n" for decorator in node.decorator_list])
+        result += ''.join(["@"+node_verbose_definition(decorator) +
+                          "\n" for decorator in node.decorator_list])
         result += "async " if is_async else ""
         result += f'def {node.name} ('
-        result += ', '.join([node_verbose_definition(arg) for arg in node.args.args])
+        result += ', '.join([node_verbose_definition(arg)
+                            for arg in node.args.args])
         result += f') -> {node_verbose_definition(node.returns)}:\n'
     elif isinstance(node, ast.ClassDef):
         bases = f"({', '.join([x.id for x in node.bases])})" if node.bases else ""
@@ -90,34 +95,38 @@ def node_verbose_definition(node, indent: str = '') -> str:
         result += repr(node.n)
     elif isinstance(node, ast.Tuple):
         result += '('
-        result += ', '.join([node_verbose_definition(elt) for elt in node.elts])
+        result += ', '.join([node_verbose_definition(elt)
+                            for elt in node.elts])
         result += ')'
     elif isinstance(node, ast.List):
         result += '['
-        result += ', '.join([node_verbose_definition(elt) for elt in node.elts])
+        result += ', '.join([node_verbose_definition(elt)
+                            for elt in node.elts])
         result += ']'
     elif isinstance(node, ast.Dict):
         result += '{'
-        result += ', '.join([f'{node_verbose_definition(key)}: {node_verbose_definition(value)}' for key, value in zip(node.keys, node.values)])
+        result += ', '.join([f'{node_verbose_definition(key)}: {node_verbose_definition(value)}' for key,
+                            value in zip(node.keys, node.values)])
         result += '}'
     elif isinstance(node, ast.AnnAssign):
         result += indent+node.target.id + ":" + node.annotation.id
-        
-    elif isinstance(node, ast.Expr):
-        print(ast.Expr, vars(node))
-    
+
+    # elif isinstance(node, ast.Expr):  # Add this case
+    #    return node_verbose_definition(node.value)
+
     elif isinstance(node, ast.Attribute):  # Add this case
         result = ''
         result += node_verbose_definition(node.value)
         result += '.'
         result += node_verbose_definition(node.attr)
         return result
-        
+
     elif isinstance(node, ast.Call):  # Add this case
         result = ''
         result += node_verbose_definition(node.func)
         result += '('
-        result += ', '.join([node_verbose_definition(arg) for arg in node.args])
+        result += ', '.join([node_verbose_definition(arg)
+                            for arg in node.args])
         result += ')'
         return result
     elif isinstance(node, str):  # Add this case
@@ -137,8 +146,9 @@ def node_verbose_definition(node, indent: str = '') -> str:
         return 'None'
     else:
         pass
-        #print(type(node))
+        # print(type(node))
     return result
+
 
 def tree_node_verbose_definition(file_path: str):
     with open(file_path) as f:
@@ -146,21 +156,47 @@ def tree_node_verbose_definition(file_path: str):
     result = node_verbose_definition(tree)
     return result
 
-TASK_CLARIFICATIONS = """
+
+def get_files_descriptions(files) -> dict:
+    file_descriptions = dict()
+    for file_name in files:
+        nodes = tree_node_verbose_definition(file_name)
+        tokens = len(nodes) / TOKENS_TO_CHARACTERS
+        if tokens > RECOMMENDED_TOKENS_PER_FILE:
+            print(
+                f"Warning, this file has {tokens:.2f} tokens and may cause an overflow in the input size, make sure to decouple ")
+        file_descriptions[file_name] = nodes
+    total_tokens = sum([len(nodes)
+                       for nodes in file_descriptions.values()]) / TOKENS_TO_CHARACTERS
+    if total_tokens > MAX_TOKENS:
+        print(
+            f"Warning, this project is big and may cause an overflow in the input size, make sure to decouple {total_tokens:.2f}")
+    return file_descriptions
+
+
+TASK_CLARIFICATIONS = """for the implementation of this feature, the possible previous clarifications required before starting would be:
+feature:
+{prompt}
+clarifications:
+
 """
 
 openai.api_key = os.getenv("OPENAPI_API_KEY")
 gpt = open_ai_model_func("text-davinci-002")
 
+TOKENS_TO_CHARACTERS = 0.75
+MAX_TOKENS = 4080
+RECOMMENDED_TOKENS_PER_FILE = 3000
 
-def fulfill_task(prompt, target_dir):
+
+def fulfill_task(prompt, target_dir, exclude_files=[]):
     clarifications = TASK_CLARIFICATIONS.format(prompt=prompt)
+    # print(clarifications)
     files = list_py_files(target_dir)
-    for file_name in files:
-        nodes = tree_node_verbose_definition(file_name)
-        print(len(nodes))
+    file_descriptions = get_files_descriptions(files)
+    print(file_descriptions.keys())
 
 
 if __name__ == '__main__':
     fulfill_task("add an endpoint that returns server side",
-                 '/home/unknown-dev/Desktop/storage/YERSON/Personal/ProjetD/text-game/backend/app')
+                 './')
