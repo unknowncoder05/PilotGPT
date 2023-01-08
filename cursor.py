@@ -2,6 +2,7 @@ import ast
 import re
 import openai
 import os
+from utils.node_description import tree_node_names
 
 
 def check_content_filter(prompt):
@@ -48,126 +49,59 @@ def open_ai_model_func(model, type='completion'):
 # utils
 
 
-def list_py_files(dir_path: str):
+def list_py_files(dir_path: str, exclude_files=[], rexclude_files=[]):
     for root, dirs, files in os.walk(dir_path):
         for file in files:
-            if file.endswith('.py'):
-                yield os.path.join(root, file)
+            if not file.endswith('.py'):
+                continue
+            file_path = os.path.join(root, file)
+            is_valid = True
+            for rexclude_file in rexclude_files:  # TODO: make it .gitignore style
+                if rexclude_file in file_path:
+                    is_valid = False
+                    break
+            if not is_valid:
+                continue
+
+            yield file_path
+    
+
+def is_included_file(file_path, exclude_files=[], rexclude_files=[]):
+    for rexclude_file in rexclude_files:  # TODO: make it .gitignore style
+        if rexclude_file in file_path:
+            return False
+    return True
 
 
-def node_verbose_definition(node, indent: str = '') -> str:
-    result = ''
-    if isinstance(node, ast.Import):
-        for alias in node.names:
-            result += f'{indent}import {alias.name}'
-            if alias.asname:
-                result += f' as {alias.asname}'
-            result += '\n'
-    elif isinstance(node, ast.ImportFrom):
-        result += f'{indent}from {node.module} import '
-        result += ', '.join([alias.name for alias in node.names])
-        result += '\n'
-    elif isinstance(node, ast.Assign):
-        result += f'{indent}'
-        result += ' = '.join([node_verbose_definition(target)
-                             for target in node.targets])
-        result += f' = {node_verbose_definition(node.value)}\n'
-    elif isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
-        is_async = isinstance(node, ast.AsyncFunctionDef)
-        result += f'{indent}'
-        result += ''.join(["@"+node_verbose_definition(decorator) +
-                          "\n" for decorator in node.decorator_list])
-        result += "async " if is_async else ""
-        result += f'def {node.name} ('
-        result += ', '.join([node_verbose_definition(arg)
-                            for arg in node.args.args])
-        result += f') -> {node_verbose_definition(node.returns)}:\n'
-    elif isinstance(node, ast.ClassDef):
-        bases = f"({', '.join([x.id for x in node.bases])})" if node.bases else ""
-        result += f'{indent}class {node.name}{bases}:\n'
-        for child in node.body:
-            result += node_verbose_definition(child, indent + '    ')+"\n"
-    elif isinstance(node, ast.Name):
-        result += node.id
-    elif isinstance(node, ast.Str):
-        result += repr(node.s)
-    elif isinstance(node, ast.Num):
-        result += repr(node.n)
-    elif isinstance(node, ast.Tuple):
-        result += '('
-        result += ', '.join([node_verbose_definition(elt)
-                            for elt in node.elts])
-        result += ')'
-    elif isinstance(node, ast.List):
-        result += '['
-        result += ', '.join([node_verbose_definition(elt)
-                            for elt in node.elts])
-        result += ']'
-    elif isinstance(node, ast.Dict):
-        result += '{'
-        result += ', '.join([f'{node_verbose_definition(key)}: {node_verbose_definition(value)}' for key,
-                            value in zip(node.keys, node.values)])
-        result += '}'
-    elif isinstance(node, ast.AnnAssign):
-        result += indent+node.target.id + ":" + node.annotation.id
+def list_directory_items(path, exclude_files=[], rexclude_files=[]):
+    # Get the names of the items in the directory
+    items = os.listdir(path)
 
-    # elif isinstance(node, ast.Expr):  # Add this case
-    #    return node_verbose_definition(node.value)
-
-    elif isinstance(node, ast.Attribute):  # Add this case
-        result = ''
-        result += node_verbose_definition(node.value)
-        result += '.'
-        result += node_verbose_definition(node.attr)
-        return result
-
-    elif isinstance(node, ast.Call):  # Add this case
-        result = ''
-        result += node_verbose_definition(node.func)
-        result += '('
-        result += ', '.join([node_verbose_definition(arg)
-                            for arg in node.args])
-        result += ')'
-        return result
-    elif isinstance(node, str):  # Add this case
-        return node
-    elif isinstance(node, ast.arg):  # Add this case
-        result = ''
-        result += node_verbose_definition(node.arg)
-        if node.annotation is not None:
-            result += ': '
-            result += node_verbose_definition(node.annotation)
-        return result
-    elif isinstance(node, ast.Module):
-        for child in ast.iter_child_nodes(node):
-            result += node_verbose_definition(child, indent)
-        return result
-    elif node is None:
-        return 'None'
-    else:
-        pass
-        # print(type(node))
-    return result
+    # Create a list of objects containing the type and name of each item
+    item_list = []
+    for item in items:
+        item_path = os.path.join(path, item)
+        if not is_included_file(item_path, exclude_files=exclude_files, rexclude_files=rexclude_files):
+            continue
+        if os.path.isdir(item_path):
+            item_type = "d"
+        else:
+            item_type = "f"
+        item_list.append({"type": item_type, "name": item})
+    return item_list
 
 
-def tree_node_verbose_definition(file_path: str):
-    with open(file_path) as f:
-        tree = ast.parse(f.read())
-    result = node_verbose_definition(tree)
-    return result
-
-
-def get_files_descriptions(files) -> dict:
+def list_file_nodes(files, target_dir) -> dict:
     file_descriptions = dict()
     for file_name in files:
-        nodes = tree_node_verbose_definition(file_name)
-        tokens = len(nodes) / TOKENS_TO_CHARACTERS
+        node_names = '\n'.join(tree_node_names(file_name))
+        tokens = len(node_names) / TOKENS_TO_CHARACTERS
         if tokens > RECOMMENDED_TOKENS_PER_FILE:
             print(
                 f"Warning, this file has {tokens:.2f} tokens and may cause an overflow in the input size, make sure to decouple ")
-        file_descriptions[file_name] = nodes
-    total_tokens = sum([len(nodes)
-                       for nodes in file_descriptions.values()]) / TOKENS_TO_CHARACTERS
+        file_descriptions[file_name.replace(target_dir, '')] = node_names
+    total_tokens = sum([len(node_names)
+                       for node_names in file_descriptions.values()]) / TOKENS_TO_CHARACTERS
     if total_tokens > MAX_TOKENS:
         print(
             f"Warning, this project is big and may cause an overflow in the input size, make sure to decouple {total_tokens:.2f}")
@@ -181,22 +115,89 @@ clarifications:
 
 """
 
+# {{"filename": "...", "actions":["actions to be done in this file"]}}
+PROMPT_PLAN = """to develop the following feature move through the repository and check which files need to be modified
+- write "ls <directory>" to list the items in a directory
+- write "content <file>" to check the relevant information of a python file
+- write "done <list>" with a list of json objects like ["relevant_file"] when all the relevant information to generate a plan is gathered
+- avoid repeating commands
+- avoid executing unnecessary commands
+- make sure to first find all relevant files
+feature: {prompt}
+exploration:
+in: ls ./
+out: {initial_files}"""
+
 openai.api_key = os.getenv("OPENAPI_API_KEY")
 gpt = open_ai_model_func("text-davinci-002")
 
 TOKENS_TO_CHARACTERS = 0.75
-MAX_TOKENS = 4080
+MAX_TOKENS = 4097
 RECOMMENDED_TOKENS_PER_FILE = 3000
 
+def file_description(file_name):
+    if file_name.endswith(".py"):
+        return tree_node_names(file_name)
+    else:
+        return "not a python file"
 
-def fulfill_task(prompt, target_dir, exclude_files=[]):
-    clarifications = TASK_CLARIFICATIONS.format(prompt=prompt)
+# ask the ai to explore a project and decide which files a re relevant
+def planning_stage(prompt, target_dir, debug=False, manual=False, input_field="in:", output_field="out:", exclude_files=[], rexclude_files=[], max_iterations=20):
+    initial_files = list_directory_items(target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+    plan_prompt = PROMPT_PLAN.format(
+        prompt=prompt, initial_files=initial_files) + "\n"+input_field
+    last_iteration = 0
+    plan = ""
+    for i in range(max_iterations):
+        if manual and input("continue? y/N: ") != "y":
+            print("manual exit")
+            break
+        last_iteration = i
+        # print(plan_prompt)
+        try:
+            response = gpt(plan_prompt, max_tokens=1000,
+                        temperature=0, stop=['\n'])
+        except Exception as e:
+            print(e)
+            return last_iteration, plan_prompt, plan
+        action_result = ""
+        if debug:
+            print(last_iteration, input_field, response)
+        if response.startswith("ls"):
+            file_name = target_dir+"/"+response.split(" ")[1].replace("./", "")
+            if os.path.exists(file_name):
+                files = list_directory_items(file_name, exclude_files=exclude_files, rexclude_files=rexclude_files)
+                action_result = str(files)
+            else:
+                action_result = "not such file"
+        elif response.startswith("content"):
+            file_name = target_dir+"/"+response.split(" ")[1].replace("./", "")
+            if os.path.exists(file_name):
+                files = file_description(file_name)
+                action_result = ">>>\n"+str(files)+"\n<<<"
+            else:
+                action_result = "not such file"
+        elif response.startswith("done"):
+            print("successful exit")
+            plan = response
+            break
+        plan_prompt += response + "\n" + output_field + action_result + "\n"+input_field
+        if debug:
+            print(output_field, action_result)
+    return last_iteration, plan_prompt, plan
+
+
+def fulfill_task(prompt, target_dir, exclude_files=[], rexclude_files=[]):
+
+    # clarifications = TASK_CLARIFICATIONS.format(prompt=prompt)
     # print(clarifications)
-    files = list_py_files(target_dir)
-    file_descriptions = get_files_descriptions(files)
-    print(file_descriptions.keys())
+    last_iteration, logs, plan = planning_stage(prompt, target_dir, max_iterations=40, manual=False, exclude_files=exclude_files, rexclude_files=rexclude_files)
+    print("RESULT")
+    print(logs)
+    print("plan", plan)
+    print("last_iteration", last_iteration)
 
 
 if __name__ == '__main__':
-    fulfill_task("add an endpoint that returns server side",
-                 './')
+    fulfill_task("add an endpoint called \"health\" that returns ok",
+                 '/home/unknown-dev/Desktop/storage/YERSON/TMF/Sempros/sempros-backend-api', rexclude_files=['migrations', 'tests', '__pycache__'])
