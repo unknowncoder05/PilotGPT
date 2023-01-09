@@ -64,13 +64,27 @@ def list_py_files(dir_path: str, exclude_files=[], rexclude_files=[]):
                 continue
 
             yield file_path
-    
+
 
 def is_included_file(file_path, exclude_files=[], rexclude_files=[]):
     for rexclude_file in rexclude_files:  # TODO: make it .gitignore style
         if rexclude_file in file_path:
             return False
     return True
+
+
+def list_directory_recursively(dir_path: str, exclude_files=[], rexclude_files=[]):
+    for root, dirs, files in os.walk(dir_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            is_valid = True
+            for rexclude_file in rexclude_files:  # TODO: make it .gitignore style
+                if rexclude_file in file_path:
+                    is_valid = False
+                    break
+            if not is_valid:
+                continue
+            yield file_path
 
 
 def list_directory_items(path, exclude_files=[], rexclude_files=[]):
@@ -108,11 +122,24 @@ def list_file_nodes(files, target_dir) -> dict:
     return file_descriptions
 
 
-TASK_CLARIFICATIONS = """for the implementation of this feature, the possible previous clarifications required before starting would be:
+TASK_CLARIFICATIONS = """for the implementation of this feature, the possible previous clarifications required before starting would be, (give a high, medium, low rating depending on if it is critical before starting, follow the format "<rating>: <description>"):
 feature:
 {prompt}
 clarifications:
+"""
 
+TASK_PLAN = """for the following feature, for each file write what code is needed to develop it, follow the step format, if needed add more than one action per file
+step format:
+{{
+    "file": "./file",
+    "action": "action to be taken",
+    "results": [{{"name": "expected name of created item", "type": "class/variable/function/etc", "inputs": [], "outputs": []}}]
+ }}
+feature:
+{prompt}
+files:
+{files}
+json plan:
 """
 
 # {{"filename": "...", "actions":["actions to be done in this file"]}}
@@ -128,12 +155,20 @@ exploration:
 in: ls ./
 out: {initial_files}"""
 
+RELEVANT_DIRECTORIES = """to develop the following feature which files are relevant, keep in mind this are not all the available files so if no relevant file is found, return "None", list them in a single line like "./file,./file2"
+feature: {prompt}
+files:
+{files}
+result:
+-"""
+
 openai.api_key = os.getenv("OPENAPI_API_KEY")
 gpt = open_ai_model_func("text-davinci-002")
 
 TOKENS_TO_CHARACTERS = 0.75
 MAX_TOKENS = 4097
 RECOMMENDED_TOKENS_PER_FILE = 3000
+
 
 def file_description(file_name):
     if file_name.endswith(".py"):
@@ -142,8 +177,11 @@ def file_description(file_name):
         return "not a python file"
 
 # ask the ai to explore a project and decide which files a re relevant
-def planning_stage(prompt, target_dir, debug=False, manual=False, input_field="in:", output_field="out:", exclude_files=[], rexclude_files=[], max_iterations=20):
-    initial_files = list_directory_items(target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+
+
+def iterative_planning(prompt, target_dir, debug=False, manual=False, input_field="in:", output_field="out:", exclude_files=[], rexclude_files=[], max_iterations=20):
+    initial_files = list_directory_items(
+        target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
     plan_prompt = PROMPT_PLAN.format(
         prompt=prompt, initial_files=initial_files) + "\n"+input_field
     last_iteration = 0
@@ -156,7 +194,7 @@ def planning_stage(prompt, target_dir, debug=False, manual=False, input_field="i
         # print(plan_prompt)
         try:
             response = gpt(plan_prompt, max_tokens=1000,
-                        temperature=0, stop=['\n'])
+                           temperature=0, stop=['\n'])
         except Exception as e:
             print(e)
             return last_iteration, plan_prompt, plan
@@ -166,7 +204,8 @@ def planning_stage(prompt, target_dir, debug=False, manual=False, input_field="i
         if response.startswith("ls"):
             file_name = target_dir+"/"+response.split(" ")[1].replace("./", "")
             if os.path.exists(file_name):
-                files = list_directory_items(file_name, exclude_files=exclude_files, rexclude_files=rexclude_files)
+                files = list_directory_items(
+                    file_name, exclude_files=exclude_files, rexclude_files=rexclude_files)
                 action_result = str(files)
             else:
                 action_result = "not such file"
@@ -187,17 +226,78 @@ def planning_stage(prompt, target_dir, debug=False, manual=False, input_field="i
     return last_iteration, plan_prompt, plan
 
 
+def slice_list_by_tokens(items, tokens_to_characters=TOKENS_TO_CHARACTERS, max_tokens=MAX_TOKENS):
+    current_list = []
+    current_token_count = 0
+    for item in items:
+        item_token_count = len(item) / tokens_to_characters
+        if current_token_count + item_token_count > max_tokens:
+            yield current_list
+            current_list = []
+            current_token_count = 0
+        current_list.append(item)
+        current_token_count += item_token_count
+
+
+def get_relevant_directories(prompt, target_dir, exclude_files=[], rexclude_files=[]):
+    files = list_directory_recursively(
+        target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+    initial_tokens = (len(RELEVANT_DIRECTORIES) +
+                      len(prompt)) / TOKENS_TO_CHARACTERS
+    expected_tokens = 3000-initial_tokens
+
+    relevant_directories = []
+    calls = 0
+    for chunk_of_files in slice_list_by_tokens(files, max_tokens=expected_tokens):
+        calls += 1
+        relevant_files_prompt = RELEVANT_DIRECTORIES.format(
+            prompt=prompt, files="\n".join([x.replace(target_dir+"/", "") for x in chunk_of_files]))
+        response = gpt(relevant_files_prompt, max_tokens=MAX_TOKENS - len(relevant_files_prompt),
+                       temperature=0, stop=['\n'])
+        if response and "None" not in response:
+            # TODO: proper cleaning
+            relevant_directories.extend(
+                [x.strip().replace('./', '') for x in response.split(",")])
+    return relevant_directories, calls
+
+
+def get_task_clarifications(prompt):
+    return gpt(TASK_CLARIFICATIONS.format(prompt=prompt))
+
+
+def get_task_plan(prompt, relevant_directories):
+    plan = gpt(TASK_PLAN.format(prompt=prompt, files='\n'.join(relevant_directories)))
+    return plan
+
+
 def fulfill_task(prompt, target_dir, exclude_files=[], rexclude_files=[]):
 
-    # clarifications = TASK_CLARIFICATIONS.format(prompt=prompt)
-    # print(clarifications)
-    last_iteration, logs, plan = planning_stage(prompt, target_dir, max_iterations=40, manual=False, exclude_files=exclude_files, rexclude_files=rexclude_files)
-    print("RESULT")
-    print(logs)
-    print("plan", plan)
-    print("last_iteration", last_iteration)
+    if False:
+        clarifications = get_task_clarifications(prompt)
+        print(clarifications)
+
+    # last_iteration, logs, plan = iterative_planning(
+    #    prompt, target_dir, max_iterations=40, manual=False, exclude_files=exclude_files, rexclude_files=rexclude_files)
+
+    if True:
+        #relevant_directories, calls = get_relevant_directories(
+        #    prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+        relevant_directories = ['api/api/users/views/authentication.py']
+        print(relevant_directories)
+        
+        # plan = get_task_plan(prompt, relevant_directories)
+        plan = """{
+    "file": "./api/api/users/views/authentication.py",
+    "action": "add a public endpoint called 'health' that returns 'ok'",
+    "results": [{"name": "health", "type": "endpoint", "inputs": [], "outputs": ["ok"]}]
+}"""
+        print(plan)
 
 
 if __name__ == '__main__':
-    fulfill_task("add an endpoint called \"health\" that returns ok",
-                 '/home/unknown-dev/Desktop/storage/YERSON/TMF/Sempros/sempros-backend-api', rexclude_files=['migrations', 'tests', '__pycache__'])
+    fulfill_task(
+        "add a public endpoint called \"health\" that returns ok in the user app",
+        '/home/unknown-dev/Desktop/storage/YERSON/TMF/Sempros/sempros-backend-api',
+        rexclude_files=['migrations', 'tests', '__pycache__',
+                        '.git/', 'media', '.env', 'node_modules']
+    )
