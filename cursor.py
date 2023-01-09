@@ -2,6 +2,7 @@ import ast
 import re
 import openai
 import os
+import json
 from utils.node_description import tree_node_names
 
 
@@ -16,7 +17,7 @@ def check_content_filter(prompt):
     return completions.choices[0].text
 
 
-def execute_completion_model(prompt, model="code-davinci-002", temperature=1, max_tokens=100, many=False, *args, **kwargs):
+def execute_completion_model(prompt, model="code-davinci-002", temperature=0, max_tokens=100, many=False, *args, **kwargs):
     """
     Executes the completion model with the given parameters and returns the list of responses.
     """
@@ -25,6 +26,22 @@ def execute_completion_model(prompt, model="code-davinci-002", temperature=1, ma
         prompt=prompt,
         temperature=temperature,
         max_tokens=max_tokens,
+        *args, **kwargs
+    )
+    if many:
+        return [x.text.strip() for x in response.choices]
+    else:
+        return response.choices[0].text.strip()
+
+def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", temperature=0, max_tokens=100, many=False, *args, **kwargs):
+    """
+    Executes the completion model with the given parameters and returns the list of responses.
+    """
+    response = openai.Edit.create(
+        model=model,
+        input=input,
+        temperature=temperature,
+        instruction=instruction,
         *args, **kwargs
     )
     if many:
@@ -41,9 +58,9 @@ def open_ai_model_func(model, type='completion'):
         def execute(prompt_text, *args, **kwargs):
             return execute_completion_model(prompt_text, model=model, *args, **kwargs)
         return execute
-    if type == 'code_completion':
-        def execute(prompt_text, *args, **kwargs):
-            return execute_completion_model(prompt_text, model=model, *args, **kwargs)
+    if type == 'code_edit':
+        def execute(prompt_text, instruction, *args, **kwargs):
+            return execute_code_edit_model(prompt_text, instruction, model=model, *args, **kwargs)
         return execute
 
 # utils
@@ -73,7 +90,7 @@ def is_included_file(file_path, exclude_files=[], rexclude_files=[]):
     return True
 
 
-def list_directory_recursively(dir_path: str, exclude_files=[], rexclude_files=[]):
+def list_files_recursively(dir_path: str, exclude_files=[], rexclude_files=[]):
     for root, dirs, files in os.walk(dir_path):
         for file in files:
             file_path = os.path.join(root, file)
@@ -86,6 +103,28 @@ def list_directory_recursively(dir_path: str, exclude_files=[], rexclude_files=[
                 continue
             yield file_path
 
+def list_directories_recursively(path, exclude_files=[], rexclude_files=[]):
+    directories = []
+    # Get the names of the items in the directory
+    items = os.listdir(path)
+    for item in items:
+        # Build the full path of the item
+        item_path = os.path.join(path, item)
+        # Check if the item is a directory
+        if os.path.isdir(item_path):
+            # filter
+            is_valid = True
+            for rexclude_file in rexclude_files:  # TODO: make it .gitignore style
+                if rexclude_file in item_path:
+                    is_valid = False
+                    break
+            if not is_valid:
+                continue
+            # Add the directory to the list
+            directories.append(item_path)
+            # Recursively list the directories in the subdirectory
+            directories += list_directories_recursively(item_path, exclude_files=exclude_files, rexclude_files=rexclude_files)
+    return directories
 
 def list_directory_items(path, exclude_files=[], rexclude_files=[]):
     # Get the names of the items in the directory
@@ -128,18 +167,27 @@ feature:
 clarifications:
 """
 
-TASK_PLAN = """for the following feature, for each file write what code is needed to develop it, follow the step format, if needed add more than one action per file
+TASK_PLAN = """for the following task, for each file write what code is needed to develop it, follow the following rules:
+- use the step format
+- if needed add more than one action per file
+- follow the already existing structure of the project when possible
+- if needed create a new file/folder
+- don't modify files which don't need to be modified
+- focus only on the task at hand
+- follow the pep-8 rules 
 step format:
 {{
     "file": "./file",
-    "action": "action to be taken",
+    "action": "action to be done",
     "results": [{{"name": "expected name of created item", "type": "class/variable/function/etc", "inputs": [], "outputs": []}}]
  }}
-feature:
+task:
 {prompt}
+directories:
+{all_directories}
 files:
 {files}
-json plan:
+json plan: [
 """
 
 # {{"filename": "...", "actions":["actions to be done in this file"]}}
@@ -159,11 +207,12 @@ RELEVANT_DIRECTORIES = """to develop the following feature which files are relev
 feature: {prompt}
 files:
 {files}
-result:
--"""
+result: [
+"""
 
 openai.api_key = os.getenv("OPENAPI_API_KEY")
 gpt = open_ai_model_func("text-davinci-002")
+code_edit_gpt = open_ai_model_func("code-davinci-edit-001", type="code_edit")
 
 TOKENS_TO_CHARACTERS = 0.75
 MAX_TOKENS = 4097
@@ -240,7 +289,7 @@ def slice_list_by_tokens(items, tokens_to_characters=TOKENS_TO_CHARACTERS, max_t
 
 
 def get_relevant_directories(prompt, target_dir, exclude_files=[], rexclude_files=[]):
-    files = list_directory_recursively(
+    files = list_files_recursively(
         target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
     initial_tokens = (len(RELEVANT_DIRECTORIES) +
                       len(prompt)) / TOKENS_TO_CHARACTERS
@@ -262,42 +311,80 @@ def get_relevant_directories(prompt, target_dir, exclude_files=[], rexclude_file
 
 
 def get_task_clarifications(prompt):
-    return gpt(TASK_CLARIFICATIONS.format(prompt=prompt))
+    return gpt(TASK_CLARIFICATIONS.format(prompt=prompt), max_tokens=1000)
 
 
-def get_task_plan(prompt, relevant_directories):
-    plan = gpt(TASK_PLAN.format(prompt=prompt, files='\n'.join(relevant_directories)))
-    return plan
+def get_task_plan(prompt, relevant_directories, target_dir, exclude_files=[], rexclude_files=[]):
+    """
+    example output
+    [{'file': './sample/project/utils/primes/SieveOfEratosthenes.js', 'action': 'create', 'results': [{'name': 'SieveOfEratosthenes', 'type': 'function', 'inputs': ['n'], 'outputs': ['array of prime numbers']}]}]
+    """
+    all_directories = list_directories_recursively(target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+    # clean directories
+    for i in range(len(all_directories)):
+        if all_directories[i].endswith("/"):
+                all_directories[i] = all_directories[i].replace(target_dir, "./") + "/"
+        else:
+            all_directories[i] = all_directories[i].replace(target_dir, ".") + "/"
+    # render plan prompt
+    plan_prompt = TASK_PLAN.format(prompt=prompt,
+               files='\n'.join(relevant_directories), all_directories='\n'.join(all_directories))
+    plan = "[" + gpt(plan_prompt, max_tokens=3000)
+    # try to generate json from response
+    try:
+        json_plan = json.loads(plan)
+        # TODO: check if file exists
+        for i in range(len(json_plan)):
+            json_plan[i]['file'] = target_dir + "/" + json_plan[i]['file'].replace("./", '')
+        return json_plan
+    except Exception as e:
+        print("failed with", plan)
+        raise e
 
 
-def fulfill_task(prompt, target_dir, exclude_files=[], rexclude_files=[]):
+def execute_task_step(step):
+    content = ""
+    if not os.path.exists(step['file']):
+        os.makedirs(os.path.dirname(step['file']), exist_ok=True)
+        content = ""
+    else:
+        with open(step['file']) as f:
+            content = f.read()
 
-    if False:
+    instruction = f"""action: {step['action']}
+expected results: {step['results']}"""
+    edited_file = code_edit_gpt(content, instruction, max_tokens=2000)
+    print(step['file'])
+    print(edited_file)
+    return edited_file
+
+
+def fulfill_task(prompt, target_dir, ask_for_clarifications=False, relevant_directories=[], steps=[], create_new_files=True, exclude_files=[], rexclude_files=[]):
+
+    if ask_for_clarifications:
         clarifications = get_task_clarifications(prompt)
         print(clarifications)
+        return
 
     # last_iteration, logs, plan = iterative_planning(
     #    prompt, target_dir, max_iterations=40, manual=False, exclude_files=exclude_files, rexclude_files=rexclude_files)
 
-    if True:
-        #relevant_directories, calls = get_relevant_directories(
-        #    prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
-        relevant_directories = ['api/api/users/views/authentication.py']
-        print(relevant_directories)
-        
-        # plan = get_task_plan(prompt, relevant_directories)
-        plan = """{
-    "file": "./api/api/users/views/authentication.py",
-    "action": "add a public endpoint called 'health' that returns 'ok'",
-    "results": [{"name": "health", "type": "endpoint", "inputs": [], "outputs": ["ok"]}]
-}"""
-        print(plan)
+    if not steps:
+        if not relevant_directories:
+            relevant_directories, calls = get_relevant_directories(
+            prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+            print("relevant_directories", relevant_directories)
+        steps = get_task_plan(prompt, relevant_directories, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+        print("steps", steps)
+    
+    for step in steps:
+        execute_task_step(step)
 
 
 if __name__ == '__main__':
     fulfill_task(
-        "add a public endpoint called \"health\" that returns ok in the user app",
-        '/home/unknown-dev/Desktop/storage/YERSON/TMF/Sempros/sempros-backend-api',
+        "add a Sieve of Eratosthenes method to find primes",
+        './sample/project',
         rexclude_files=['migrations', 'tests', '__pycache__',
-                        '.git/', 'media', '.env', 'node_modules']
+                        '.git', 'media', '.env', 'node_modules', 'build']
     )
