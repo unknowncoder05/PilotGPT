@@ -4,9 +4,13 @@ import openai
 import os
 import json
 from utils.node_description import tree_node_names
+import hashlib
 
+INFO = True
 
 def check_content_filter(prompt):
+    if INFO:
+        print('gpt call')
     completions = openai.Completion.create(
         engine="content-filter-alpha",
         prompt=prompt,
@@ -21,6 +25,8 @@ def execute_completion_model(prompt, model="code-davinci-002", temperature=0, ma
     """
     Executes the completion model with the given parameters and returns the list of responses.
     """
+    if INFO:
+        print('gpt call')
     response = openai.Completion.create(
         model=model,
         prompt=prompt,
@@ -33,10 +39,13 @@ def execute_completion_model(prompt, model="code-davinci-002", temperature=0, ma
     else:
         return response.choices[0].text.strip()
 
+
 def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", temperature=0, max_tokens=100, many=False, *args, **kwargs):
     """
     Executes the completion model with the given parameters and returns the list of responses.
     """
+    if INFO:
+        print('gpt call')
     response = openai.Edit.create(
         model=model,
         input=input,
@@ -103,6 +112,7 @@ def list_files_recursively(dir_path: str, exclude_files=[], rexclude_files=[]):
                 continue
             yield file_path
 
+
 def list_directories_recursively(path, exclude_files=[], rexclude_files=[]):
     directories = []
     # Get the names of the items in the directory
@@ -123,8 +133,10 @@ def list_directories_recursively(path, exclude_files=[], rexclude_files=[]):
             # Add the directory to the list
             directories.append(item_path)
             # Recursively list the directories in the subdirectory
-            directories += list_directories_recursively(item_path, exclude_files=exclude_files, rexclude_files=rexclude_files)
+            directories += list_directories_recursively(
+                item_path, exclude_files=exclude_files, rexclude_files=rexclude_files)
     return directories
+
 
 def list_directory_items(path, exclude_files=[], rexclude_files=[]):
     # Get the names of the items in the directory
@@ -171,7 +183,7 @@ TASK_PLAN = """for the following task, for each file write what code is needed t
 - use the step format
 - if needed add more than one action per file
 - follow the already existing structure of the project when possible
-- if needed create a new file/folder
+- if needed create new files by just adding win the action field what should be it's content, write "empty" if there is no need to add content
 - don't modify files which don't need to be modified
 - focus only on the task at hand
 - follow the pep-8 rules 
@@ -310,6 +322,89 @@ def get_relevant_directories(prompt, target_dir, exclude_files=[], rexclude_file
     return relevant_directories, calls
 
 
+def get_file_nodes(file_path, use_cache=True, splitter=';', headers=["type", "name", "inputs", "outputs", "parent class", "short description"]):
+    GET_NODES_PROMPT_FORMAT = """from this file write the relevant nodes (variables, functions, function call, classes, ...)
+- for fields that don't apply to the node type, left an empty space ' '
+- avoid writing variables used inside functions/classes
+- separate list fields by commas ','
+- for inputs and outputs use format 'name:type' if a list, add the type of it's items
+>>>
+{file_content}
+<<<
+{headers}
+"""
+    # TODO: set individual node hash
+    with open(file_path) as f:
+        file_content = f.read()
+        file_hash = hashlib.sha256(file_content.encode()).hexdigest()
+
+    # load cache if exists
+    if use_cache:
+        cashed_nodes = get_file_nodes_cache(file_path, file_hash=file_hash)
+        if type(cashed_nodes) is list:
+            return cashed_nodes
+
+    # raw get nodes
+    prompt = GET_NODES_PROMPT_FORMAT.format(
+        file_content=file_content, headers=splitter.join(headers))
+    result = gpt(prompt, max_tokens=MAX_TOKENS - len(prompt),
+                 temperature=0)
+    nodes = [dict(zip(headers, x.split(splitter))) for x in result.split('\n')]
+
+    # save cache
+    if use_cache:
+        save_file_nodes_cache(file_path, nodes=nodes, file_hash=file_hash)
+
+    return nodes
+
+
+def get_file_nodes_cache(file_path, file_hash=None, cache_directory='pilot.cache'):
+    # TODO: use path.join
+    current_cache_directory = os.path.dirname(
+        file_path) + "/" + cache_directory
+    current_cache_file = current_cache_directory+"/"+os.path.basename(file_path)
+
+    if not os.path.exists(current_cache_file):
+        return None
+
+    try:
+        with open(current_cache_file, 'r') as f:
+            cache = json.load(f)
+
+        if not file_hash:
+            with open(file_path, 'r') as f:
+                file_content = f.read()
+                file_hash = hashlib.sha256(file_content.encode()).hexdigest()
+        if cache.get('file_hash') != file_hash:
+            return None
+
+        return cache.get('nodes')
+    except Exception as e:
+        print("CACHE ERROR", e)
+        return None
+
+
+def save_file_nodes_cache(file_path, nodes, file_hash=None, cache_directory='pilot.cache'):
+    # TODO: use path.join
+    current_cache_directory = os.path.dirname(
+        file_path) + "/" + cache_directory
+    current_cache_file = current_cache_directory+"/"+os.path.basename(file_path)
+
+    if not os.path.exists(current_cache_directory):
+        os.makedirs(current_cache_directory, exist_ok=True)
+    
+    if not file_hash:
+        with open(file_path, 'r') as f:
+            file_content = f.read()
+            file_hash = hashlib.sha256(file_content.encode()).hexdigest()
+
+    with open(current_cache_file, 'w') as f:
+        json.dump(dict(nodes=nodes, file_hash=file_hash), f)
+
+
+# def get_relevant_nodes(prompt, relevant_directories):
+
+
 def get_task_clarifications(prompt):
     return gpt(TASK_CLARIFICATIONS.format(prompt=prompt), max_tokens=1000)
 
@@ -319,23 +414,27 @@ def get_task_plan(prompt, relevant_directories, target_dir, exclude_files=[], re
     example output
     [{'file': './sample/project/utils/primes/SieveOfEratosthenes.js', 'action': 'create', 'results': [{'name': 'SieveOfEratosthenes', 'type': 'function', 'inputs': ['n'], 'outputs': ['array of prime numbers']}]}]
     """
-    all_directories = list_directories_recursively(target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+    all_directories = list_directories_recursively(
+        target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
     # clean directories
     for i in range(len(all_directories)):
         if all_directories[i].endswith("/"):
-                all_directories[i] = all_directories[i].replace(target_dir, "./") + "/"
+            all_directories[i] = all_directories[i].replace(
+                target_dir, "./") + "/"
         else:
-            all_directories[i] = all_directories[i].replace(target_dir, ".") + "/"
+            all_directories[i] = all_directories[i].replace(
+                target_dir, ".") + "/"
     # render plan prompt
     plan_prompt = TASK_PLAN.format(prompt=prompt,
-               files='\n'.join(relevant_directories), all_directories='\n'.join(all_directories))
+                                   files='\n'.join(relevant_directories), all_directories='\n'.join(all_directories))
     plan = "[" + gpt(plan_prompt, max_tokens=3000)
     # try to generate json from response
     try:
         json_plan = json.loads(plan)
         # TODO: check if file exists
         for i in range(len(json_plan)):
-            json_plan[i]['file'] = target_dir + "/" + json_plan[i]['file'].replace("./", '')
+            json_plan[i]['file'] = target_dir + "/" + \
+                json_plan[i]['file'].replace("./", '')
         return json_plan
     except Exception as e:
         print("failed with", plan)
@@ -350,10 +449,10 @@ def execute_task_step(step):
     else:
         with open(step['file']) as f:
             content = f.read()
-
-    instruction = f"""action: {step['action']}
-expected results: {step['results']}"""
-    edited_file = code_edit_gpt(content, instruction, max_tokens=2000)
+    if step['action'] != 'empty':
+        instruction = f"""action: {step['action']}
+    expected results: {step['results']}"""
+        edited_file = code_edit_gpt(content, instruction, max_tokens=2000)
     print(step['file'])
     print(edited_file)
     return edited_file
@@ -372,19 +471,24 @@ def fulfill_task(prompt, target_dir, ask_for_clarifications=False, relevant_dire
     if not steps:
         if not relevant_directories:
             relevant_directories, calls = get_relevant_directories(
-            prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+                prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
             print("relevant_directories", relevant_directories)
-        steps = get_task_plan(prompt, relevant_directories, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
+        steps = get_task_plan(prompt, relevant_directories, target_dir,
+                              exclude_files=exclude_files, rexclude_files=rexclude_files)
         print("steps", steps)
-    
+
     for step in steps:
         execute_task_step(step)
 
 
 if __name__ == '__main__':
-    fulfill_task(
-        "add a Sieve of Eratosthenes method to find primes",
-        './sample/project',
-        rexclude_files=['migrations', 'tests', '__pycache__',
-                        '.git', 'media', '.env', 'node_modules', 'build']
-    )
+    if False:
+        fulfill_task(
+            "add a Sieve of Eratosthenes method to find primes",
+            './sample/project',
+            rexclude_files=['migrations', 'tests', '__pycache__',
+                            '.git', 'media', '.env', 'node_modules', 'build']
+        )
+    if True:
+        nodes = get_file_nodes("./sample/project/utils/fibonacci/cows.py")
+        print(nodes)
