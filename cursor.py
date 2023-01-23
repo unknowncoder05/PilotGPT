@@ -8,6 +8,7 @@ import hashlib
 
 INFO = True
 
+
 def check_content_filter(prompt):
     if INFO:
         print('gpt call')
@@ -215,7 +216,7 @@ exploration:
 in: ls ./
 out: {initial_files}"""
 
-RELEVANT_DIRECTORIES = """to develop the following feature which files are relevant, keep in mind this are not all the available files so if no relevant file is found, return "None", list them in a single line like "./file,./file2"
+RELEVANT_DIRECTORIES = """to develop the following feature which files need to be modified, keep in mind this are not all the available files so if no relevant file is found, return "None", list them in a single line like "./file,./file2"
 feature: {prompt}
 files:
 {files}
@@ -300,7 +301,7 @@ def slice_list_by_tokens(items, tokens_to_characters=TOKENS_TO_CHARACTERS, max_t
         current_token_count += item_token_count
 
 
-def get_relevant_directories(prompt, target_dir, exclude_files=[], rexclude_files=[]):
+def get_relevant_files(prompt, target_dir, exclude_files=[], rexclude_files=[]):
     files = list_files_recursively(
         target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
     initial_tokens = (len(RELEVANT_DIRECTORIES) +
@@ -322,10 +323,10 @@ def get_relevant_directories(prompt, target_dir, exclude_files=[], rexclude_file
     return relevant_directories, calls
 
 
-def get_file_nodes(file_path, use_cache=True, splitter=';', headers=["type", "name", "inputs", "outputs", "parent class", "short description"]):
-    GET_NODES_PROMPT_FORMAT = """from this file write the relevant nodes (variables, functions, function call, classes, ...)
-- for fields that don't apply to the node type, left an empty space ' '
-- avoid writing variables used inside functions/classes
+def get_file_nodes(file_path, use_cache=True, splitter=';', headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
+    GET_NODES_PROMPT_FORMAT = """from this file write the base nodes (variables, functions, function call, classes, ...) that would need to be modified
+- for fields that don't apply to the node type, left an empty space None
+- is parent should be true, don't add nodes if this condition is not met
 - separate list fields by commas ','
 - for inputs and outputs use format 'name:type' if a list, add the type of it's items
 >>>
@@ -362,7 +363,8 @@ def get_file_nodes_cache(file_path, file_hash=None, cache_directory='pilot.cache
     # TODO: use path.join
     current_cache_directory = os.path.dirname(
         file_path) + "/" + cache_directory
-    current_cache_file = current_cache_directory+"/"+os.path.basename(file_path)
+    current_cache_file = current_cache_directory + \
+        "/"+os.path.basename(file_path)
 
     if not os.path.exists(current_cache_file):
         return None
@@ -388,11 +390,12 @@ def save_file_nodes_cache(file_path, nodes, file_hash=None, cache_directory='pil
     # TODO: use path.join
     current_cache_directory = os.path.dirname(
         file_path) + "/" + cache_directory
-    current_cache_file = current_cache_directory+"/"+os.path.basename(file_path)
+    current_cache_file = current_cache_directory + \
+        "/"+os.path.basename(file_path)
 
     if not os.path.exists(current_cache_directory):
         os.makedirs(current_cache_directory, exist_ok=True)
-    
+
     if not file_hash:
         with open(file_path, 'r') as f:
             file_content = f.read()
@@ -402,7 +405,70 @@ def save_file_nodes_cache(file_path, nodes, file_hash=None, cache_directory='pil
         json.dump(dict(nodes=nodes, file_hash=file_hash), f)
 
 
-# def get_relevant_nodes(prompt, relevant_directories):
+def get_relevant_nodes(prompt, relevant_files, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
+    GET_RELEVANT_NODES_PROMPT_FORMAT = """from this nodes (variables, functions, classes, ...) make comma separated list of names of the relevant nodes to complete this task
+task:
+{task}
+nodes:
+{nodes}
+result:
+"""
+    nodes_by_file = {}
+    for file_name in relevant_files:
+        file_nodes = get_file_nodes(file_name)
+        if not file_nodes:
+            continue
+        rendered_nodes = ';'.join(headers)
+        for node in file_nodes:
+            rendered_nodes += '\n'
+            rendered_nodes += ';'.join(node.values())
+        relevant_nodes_prompt = GET_RELEVANT_NODES_PROMPT_FORMAT.format(
+            task=prompt, nodes=rendered_nodes)
+        response = gpt(relevant_nodes_prompt, max_tokens=MAX_TOKENS - len(relevant_nodes_prompt),
+                       temperature=0, stop=['\n'])
+        print(relevant_nodes_prompt)
+        try:
+            relevant_node_names = [x.strip() for x in response.split(',')]
+            nodes_by_file[file_name] = [
+                node for node in file_nodes if node['name'] in relevant_node_names]
+        except Exception as e:
+            print('ERROR get_relevant_nodes', e)
+
+    return nodes_by_file
+
+
+def get_new_nodes(prompt, nodes_by_file, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
+    GET_NEW_NODES_PROMPT_FORMAT = """from this nodes (variables, functions, classes, ...) add nodes that would need to be created to complete the task, if none is required respond None
+task:
+{task}
+nodes:
+{nodes}
+result:
+{headers}
+"""
+    rendered_headers = ';'.join(headers+['file'])
+    rendered_nodes = rendered_headers
+    for file in nodes_by_file:
+        for node in nodes_by_file[file]:
+            rendered_nodes += '\n'
+            rendered_nodes += ';'.join(node.values())+';'+file
+    relevant_nodes_prompt = GET_NEW_NODES_PROMPT_FORMAT.format(
+        task=prompt, nodes=rendered_nodes, headers=rendered_headers)
+    
+
+    response = gpt(relevant_nodes_prompt, max_tokens=MAX_TOKENS - len(relevant_nodes_prompt),
+                   temperature=0)
+    print(relevant_nodes_prompt,response)
+    try:
+        new_nodes = []
+        for new_node in response.split('\n'):
+            attrs = [x.strip() for x in new_node.split(',')]
+            new_nodes.append(
+                dict(zip(headers+['file'], attrs))
+            )
+        return new_nodes
+    except Exception as e:
+        print('ERROR get_new_nodes', e)
 
 
 def get_task_clarifications(prompt):
@@ -470,7 +536,7 @@ def fulfill_task(prompt, target_dir, ask_for_clarifications=False, relevant_dire
 
     if not steps:
         if not relevant_directories:
-            relevant_directories, calls = get_relevant_directories(
+            relevant_directories, calls = get_relevant_files(
                 prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
             print("relevant_directories", relevant_directories)
         steps = get_task_plan(prompt, relevant_directories, target_dir,
@@ -490,5 +556,6 @@ if __name__ == '__main__':
                             '.git', 'media', '.env', 'node_modules', 'build']
         )
     if True:
-        nodes = get_file_nodes("./sample/project/utils/fibonacci/cows.py")
+        nodes = get_new_nodes("add a Sieve of Eratosthenes method to find primes", {'./sample/project/utils/fibonacci/cows.py': [
+                              {'type': 'function', 'name': 'fibonacci_cows', 'inputs': 'n:int', 'outputs': 'cows:list', 'parent class': " ' '", 'is parent': 'true', 'short description': " ' '"}]})
         print(nodes)
