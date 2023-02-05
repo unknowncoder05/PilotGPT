@@ -506,8 +506,7 @@ def get_task_clarifications(prompt):
 
 
 def print_task_steps(node_steps):
-    print("node_steps", node_steps)
-    print("modifying")
+    print("# modifying")
     existing_nodes = [
         node_step for node_step in node_steps if node_step.get('exists')]
     if len(existing_nodes) > 0:
@@ -515,7 +514,7 @@ def print_task_steps(node_steps):
     else:
         print("-")
 
-    print("creating:")
+    print("# creating:")
     new_nodes = [
         node_step for node_step in node_steps if not node_step.get('exists')]
     if len(new_nodes) > 0:
@@ -621,26 +620,44 @@ def get_task_plan(prompt, target_dir, relevant_files=None, relevant_nodes=None, 
         print_task_steps(steps)
     return steps
 
-
-def execute_task_step(step):
-    content = ""
-    if not os.path.exists(step['file']):
-        os.makedirs(os.path.dirname(step['file']), exist_ok=True)
-        content = ""
-    else:
-        with open(step['file']) as f:
-            content = f.read()
-    if step['action'] != 'empty':
-        instruction = f"""action: {step['action']}
-expected results: {step['results']}"""
-        edited_file = code_edit_gpt(content, instruction, max_tokens=2000)
-    print(step['file'])
-    print(edited_file)
-    return edited_file
-
-
-def execute_task_plan(steps):
-    pass
+def execute_task_plan(prompt, steps):
+    for step in steps:
+        if not os.path.exists(step['file']):
+            os.makedirs(os.path.dirname(step['file']), exist_ok=True)
+            content = ""
+        else:
+            with open(step['file']) as f:
+                content = f.read()
+        dependency_nodes = [dependency_node for dependency_node in steps if dependency_node['name'] in step['dependencies']]
+        rendered_dependency_nodes = dict_to_csv(dependency_nodes, headers=[
+                                     "type", "name", "inputs", "outputs", "parent class", "short description", "file"], delimiter=';')
+        if step.get('exists'):
+            instruction = f"""
+current file: {step['file']}
+modify the {step['type']} named {step['name']}
+inputs {step['inputs']} 
+outputs {step['outputs']} 
+parent class {step['parent class']} 
+task: {step['task_step_description']}
+relevant resources:
+{rendered_dependency_nodes}
+"""
+        else:
+            instruction = f"""
+current file: {step['file']}
+code a {step['type']} named {step['name']} that {step['short description']}
+inputs {step['inputs']} 
+outputs {step['outputs']} 
+parent class {step['parent class']} 
+task: {step['task_step_description']}
+relevant resources:
+{rendered_dependency_nodes}
+"""
+        edited_file = code_edit_gpt(content, instruction, max_tokens=MAX_TOKENS - len(instruction))
+        # print("INSTRUCTIONS", instruction)
+        # print("NAME:",step['name'])
+        # print("CONTENT:")
+        print(edited_file)
 
 
 def fulfill_task(prompt, target_dir, steps=False, ask_for_clarifications=False, relevant_files=None, relevant_nodes=None, new_nodes=None, exclude_files=[], rexclude_files=[], ask_confirmation=True):
@@ -656,12 +673,15 @@ def fulfill_task(prompt, target_dir, steps=False, ask_for_clarifications=False, 
     if not steps:
         steps = get_task_plan(prompt, target_dir, relevant_files=relevant_files, relevant_nodes=relevant_nodes, new_nodes=new_nodes,
                               exclude_files=exclude_files, rexclude_files=rexclude_files, print_plan=ask_confirmation)
+    else:
+        if ask_confirmation:
+            print_task_steps(steps)
     if ask_confirmation:
         confirmation = input("apply (y,N)") == "y"
         if not confirmation:
             return
 
-    execute_task_plan(steps)
+    execute_task_plan(prompt, steps)
 
 
 if __name__ == '__main__':
