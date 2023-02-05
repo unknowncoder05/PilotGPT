@@ -1,1 +1,0 @@
-{"nodes": [{"type": "function", "name": "fibonacci_cows", "inputs": "n:int", "outputs": "cows:list", "parent class": " ' '", "is parent": "true", "short description": " ' '"}], "file_hash": "dadf9d39597d53e69f0c73ba9d1d9dc51d651b779326b85adcddea1eb02cc64b"}
