@@ -361,7 +361,7 @@ parent nodes:
     prompt = GET_NODES_PROMPT_FORMAT.format(
         file_content="\n".join(base_lines), headers=splitter.join(headers))
     result = gpt(prompt, max_tokens=MAX_TOKENS - len(prompt),
-                 temperature=0, stop=['parent nodes:', ['child nodes:']])
+                 temperature=0, stop=['parent nodes:', 'child nodes:'])
     nodes = [dict(zip(headers, x.split(splitter))) for x in result.split('\n')]
 
     # save cache
@@ -585,7 +585,6 @@ resource name; step description; dependent on resources
         name, task_step_description, dependencies = [
             x.strip() for x in raw_step.split(";")]
         for i, node in enumerate(nodes):
-            print(">>>>>>>>>>>>><",  node['name'], name,  node['name'] == name)
             if node['name'] == name:
                 nodes[i]['task_step_description'] = task_step_description
                 nodes[i]['dependencies'] = [dependency.strip(
@@ -593,35 +592,34 @@ resource name; step description; dependent on resources
                 yield nodes[i]
 
 
-def get_task_plan(prompt, target_dir, relevant_files=None, relevant_nodes=None, new_nodes=None, exclude_files=None, rexclude_files=None, steps=None, print_plan=False, debug=INFO):
-
-    if not steps:
-        # Relevant files
-        if not relevant_files:
-            relevant_files, calls = get_relevant_files(
-                prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
-            if debug:
-                print("relevant_files calls", calls)
+def get_task_plan(prompt, target_dir, relevant_files=None, relevant_nodes=None, new_nodes=None, exclude_files=None, rexclude_files=None, print_plan=False, debug=INFO):
+    # Relevant files
+    if not relevant_files:
+        relevant_files, calls = get_relevant_files(
+            prompt, target_dir, exclude_files=exclude_files, rexclude_files=rexclude_files)
         if debug:
-            print("relevant_files:", relevant_files)
+            print("relevant_files calls", calls)
+    if debug:
+        print("relevant_files:", relevant_files)
 
-        # Relevant nodes in files
-        if not relevant_nodes:
-            relevant_nodes = get_relevant_nodes(prompt, relevant_files)
-        if debug:
-            print("relevant_nodes:", relevant_nodes)
+    # Relevant nodes in files
+    if not relevant_nodes:
+        relevant_nodes = get_relevant_nodes(prompt, relevant_files)
+    if debug:
+        print("relevant_nodes:", relevant_nodes)
 
-        # New nodes
-        if not new_nodes:
-            new_nodes = get_new_nodes(
-                prompt, relevant_nodes, relevant_files_and_folders=relevant_files)
-        if debug:
-            print("new_nodes:", new_nodes)
-        steps = get_task_plan_steps(prompt, relevant_nodes, new_nodes)
-        steps = list(steps)
+    # New nodes
+    if not new_nodes:
+        new_nodes = get_new_nodes(
+            prompt, relevant_nodes, relevant_files_and_folders=relevant_files)
+    if debug:
+        print("new_nodes:", new_nodes)
+    steps = get_task_plan_steps(prompt, relevant_nodes, new_nodes)
+    steps = list(steps)
+
     if print_plan:
         print_task_steps(steps)
-    return relevant_nodes, new_nodes
+    return steps
 
 
 def execute_task_step(step):
@@ -671,6 +669,8 @@ if __name__ == '__main__':
         fulfill_task(
             "add a Sieve of Eratosthenes method to find primes",
             './sample/project',
+            steps=[{'type': 'function', 'name': 'sieve_of_eratosthenes', 'inputs': 'number_limit', 'outputs': 'primes', 'parent class': 'None', 'is parent': 'False', 'short description': 'Finds primes using the Sieve of Eratosthenes algorithm.',
+                    'file': './sample/project/utils/primes/sieve_of_eratosthenes.py', 'task_step_description': 'add a function to find primes using the Sieve of Eratosthenes algorithm.', 'dependencies': []}],
             rexclude_files=['migrations', 'tests', '__pycache__',
                             '.git', 'media', '.env', 'node_modules', 'build', '.cache']
         )

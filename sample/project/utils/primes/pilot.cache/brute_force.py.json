@@ -1,0 +1,14 @@
+{
+    "nodes": [
+        {
+            "type": "function",
+            "name": "get_prime_numbers",
+            "inputs": "n:int",
+            "outputs": "prime_numbers:list",
+            "parent class": "None",
+            "is parent": "None",
+            "short description": "generates a list of prime numbers"
+        }
+    ],
+    "file_hash": "9f48b79c29cc6e2d1ce05e0db9989c371dde2611535abd0a3f8ed224be014ff5"
+}
