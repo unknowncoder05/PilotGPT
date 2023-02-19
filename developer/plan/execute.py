@@ -35,7 +35,4 @@ relevant resources:
 {rendered_dependency_nodes}
 """
         edited_file = code_edit_gpt(content, instruction, max_tokens=-1)
-        # print("INSTRUCTIONS", instruction)
-        # print("NAME:",step['name'])
-        # print("CONTENT:")
-        print(edited_file)
+        yield step['file'], edited_file

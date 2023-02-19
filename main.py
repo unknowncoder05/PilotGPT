@@ -1,92 +1,18 @@
-from developer.task.fulfill import fulfill_task
-import openai
+from developer.task import Task
+from project.project import Project
+from gpt.models import open_ai_model_func
 import os
 
-INFO = True
-TOKENS_TO_CHARACTERS = 0.75
-MAX_TOKENS = 4097
-RECOMMENDED_TOKENS_PER_FILE = 3000
-
-
-def check_content_filter(prompt):
-    if INFO:
-        print('gpt call')
-    completions = openai.Completion.create(
-        engine="content-filter-alpha",
-        prompt=prompt,
-        max_tokens=1,
-        temperature=0,
-        top_p=0
-    )
-    return completions.choices[0].text
-
-
-def execute_completion_model(prompt, model="code-davinci-002", temperature=0, max_tokens=-1, many=False, *args, **kwargs):
-    """
-    Executes the completion model with the given parameters and returns the list of responses.
-    """
-    if INFO:
-        print('gpt call')
-    if max_tokens == -1:
-        max_tokens = int(MAX_TOKENS - len(prompt) / TOKENS_TO_CHARACTERS)
-    
-    response = openai.Completion.create(
-        model=model,
-        prompt=prompt,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        *args, **kwargs
-    )
-    if many:
-        return [x.text.strip() for x in response.choices]
-    else:
-        return response.choices[0].text.strip()
-
-
-def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", temperature=0, max_tokens=100, many=False, *args, **kwargs):
-    """
-    Executes the completion model with the given parameters and returns the list of responses.
-    """
-    if INFO:
-        print('gpt call')
-    response = openai.Edit.create(
-        model=model,
-        input=input,
-        temperature=temperature,
-        instruction=instruction,
-        *args, **kwargs
-    )
-    if many:
-        return [x.text.strip() for x in response.choices]
-    else:
-        return response.choices[0].text.strip()
-
-
-def open_ai_model_func(model, type='completion'):
-    """
-    Returns a function that executes the given model with the specified type.
-    """
-    if type == 'completion':
-        def execute(prompt_text, *args, **kwargs):
-            return execute_completion_model(prompt_text, model=model, *args, **kwargs)
-        return execute
-    if type == 'code_edit':
-        def execute(prompt_text, instruction, *args, **kwargs):
-            return execute_code_edit_model(prompt_text, instruction, model=model, *args, **kwargs)
-        return execute
-
-
-openai.api_key = os.getenv("OPENAPI_API_KEY")
-gpt = open_ai_model_func("text-davinci-002")
-code_edit_gpt = open_ai_model_func("code-davinci-edit-001", type="code_edit")
 
 if __name__ == '__main__':
-    if True:
-        fulfill_task(gpt, code_edit_gpt,
-                     "add a Sieve of Eratosthenes method to find primes",
-                     './sample/project',
-                     #steps=[{'type': 'function', 'name': 'sieve_of_eratosthenes', 'inputs': 'number_limit', 'outputs': 'primes', 'parent class': 'None', 'is parent': 'False', 'short description': 'Finds primes using the Sieve of Eratosthenes algorithm.',
-                     #        'file': './sample/project/utils/primes/sieve_of_eratosthenes.py', 'task_step_description': 'add a function to find primes using the Sieve of Eratosthenes algorithm.', 'dependencies': []}],
-                     rexclude_files=['migrations', 'tests', '__pycache__',
-                                     '.git', 'media', '.env', 'node_modules', 'build', '.cache']
-                     )
+    gpt = open_ai_model_func("text-davinci-002")
+    code_edit_gpt = open_ai_model_func(
+        "code-davinci-edit-001", type="code_edit")
+    project = Project(repository_path=os.getenv("REPOSITORY_PATH"))
+    task = Task(gpt, code_edit_gpt, project=project,
+                prompt="add a Sieve of Eratosthenes method to find primes",
+                )
+    task.plan(rexclude_files=['migrations', 'tests', '__pycache__',
+                              '.git', 'media', '.env', 'node_modules', 'build', '.cache'])
+
+    task.apply(target_branch='TASK-1')
