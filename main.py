@@ -15,7 +15,7 @@ if __name__ == '__main__':
     gpt = open_ai_model_func("text-davinci-002")
     code_edit_gpt = open_ai_model_func(
         "code-davinci-edit-001", type="code_edit")
-    project = Project(repository_path=repository_url)
+    project = Project(repository_url=repository_url, repository_path='/repo')
     task = Task(
         gpt,
         code_edit_gpt,
