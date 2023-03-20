@@ -6,16 +6,19 @@ import sys
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 4 + 1:
+        print("Usage: python main.py <repository_url> <task_prompt> <input_branch> <output_branch>")
+        sys.exit(1)
     repository_url = sys.argv[1]
     task_prompt = sys.argv[2]
-    if len(sys.argv) < 3:
-        print("Usage: python main.py <repository_url> <task_prompt>")
-        sys.exit(1)
+    input_branch = sys.argv[3]
+    output_branch = sys.argv[4]
+    
 
     gpt = open_ai_model_func("text-davinci-002")
     code_edit_gpt = open_ai_model_func(
         "code-davinci-edit-001", type="code_edit")
-    project = Project(repository_url=repository_url, repository_path='/repo')
+    project = Project(repository_url=repository_url, repository_path='./repo', branch=input_branch)
     task = Task(
         gpt,
         code_edit_gpt,
@@ -25,4 +28,4 @@ if __name__ == '__main__':
     task.plan(rexclude_files=['migrations', 'tests', '__pycache__',
                               '.git', 'media', '.env', 'node_modules', 'build', '.cache'])
 
-    task.apply(target_branch='TASK-1')
+    task.apply(target_branch=input_branch)
