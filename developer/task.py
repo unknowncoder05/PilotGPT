@@ -37,7 +37,7 @@ class Task:
         self.planned = True
         return steps
 
-    def apply(self, ask_confirmation=True, target_branch=None):
+    def apply(self, ask_confirmation=True, target_branch=None, push=True, origin_name='origin'):
         if not self.planned:
             raise Exception("you have to plan this task before executing it")
         
@@ -69,6 +69,10 @@ class Task:
         self.project.repo.index.add(edited_files)
         commit_message = self.commit_message
         self.project.repo.index.commit(commit_message)
+
+        # push
+        origin = self.project.repo.remote(name=origin_name)
+        origin.push()
 
         # switch back to the original branch
         original_branch = self.project.repo.branches[current_branch]

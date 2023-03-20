@@ -13,6 +13,12 @@ if __name__ == '__main__':
     task_prompt = sys.argv[2]
     input_branch = sys.argv[3]
     output_branch = sys.argv[4]
+    print(f"""repository_url={repository_url}
+task_prompt={task_prompt}
+input_branch={input_branch}
+output_branch={output_branch}
+"""
+    )
     
 
     gpt = open_ai_model_func("text-davinci-002")
