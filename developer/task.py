@@ -56,6 +56,7 @@ class Task:
         self.project.repo.head.reference = new_branch
         self.project.repo.head.reset(index=True, working_tree=True)
 
+        print('STEPS:', self.steps)
         # modify files
         edited_files = []
         for file_name, file_edited_content in execute_task_plan(self.code_edit_gpt, self.prompt, self.steps):
@@ -71,8 +72,9 @@ class Task:
         self.project.repo.index.commit(commit_message)
 
         # push
-        origin = self.project.repo.remote(name=origin_name)
-        origin.push()
+        if push:
+            origin = self.project.repo.remote(name=origin_name)
+            origin.push()
 
         # switch back to the original branch
         original_branch = self.project.repo.branches[current_branch]

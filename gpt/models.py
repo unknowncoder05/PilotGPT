@@ -28,6 +28,9 @@ def execute_completion_model(prompt, model="code-davinci-002", temperature=0, ma
         print('gpt call')
     if max_tokens == -1:
         max_tokens = int(MAX_TOKENS - len(prompt) / TOKENS_TO_CHARACTERS)
+        if max_tokens < 0:
+            print("ERR: long prompt", prompt)
+            return ''
     
     response = openai.Completion.create(
         model=model,

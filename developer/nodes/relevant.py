@@ -16,6 +16,8 @@ related node names:
         if not file_nodes:
             continue
         rendered_nodes = '\t'.join(headers)
+        if not file_nodes:
+            continue
         for node in file_nodes:
             rendered_nodes += '\n'
             rendered_nodes += '\t'.join(node.values())

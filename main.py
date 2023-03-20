@@ -34,4 +34,4 @@ output_branch={output_branch}
     task.plan(rexclude_files=['migrations', 'tests', '__pycache__',
                               '.git', 'media', '.env', 'node_modules', 'build', '.cache'])
 
-    task.apply(target_branch=input_branch)
+    task.apply(target_branch=input_branch, ask_confirmation=False)

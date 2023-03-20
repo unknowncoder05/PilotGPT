@@ -8,13 +8,13 @@ relevant resources:
 {nodes}
 
 steps example format:
-resource name; step description; dependent on resources
-greater; add a username string input and then print it with a greater message; 
-bulk_greater; receive many usernames and calls the greater function for each one of them; greater
-main; add a call to the bulk_greater function with the names karl, leo and juliet; bulk_greater, greater
+resource name | step description | dependent on resources
+greater | add a username string input and then print it with a greater message; |
+bulk_greater | receive many usernames and calls the greater function for each one of them | greater
+main | add a call to the bulk_greater function with the names karl, leo and juliet | bulk_greater, greater
 
 steps:
-resource name; step description; dependent on resources
+resource name | step description | dependent on resources
 """
     # TODO: handle nodes with same name
 
@@ -29,23 +29,29 @@ resource name; step description; dependent on resources
 
     # render gpt prompt
     rendered_new_nodes = dict_to_csv(nodes, headers=[
-                                     "type", "name", "inputs", "outputs", "parent class", "short description", "file"], delimiter=';')
+                                     "name", "type", "inputs", "outputs", "parent class", "short description", "file"], delimiter='|')
     rendered_steps_prompt = TASK_PLAN_STEPS.format(
         prompt=prompt, nodes=rendered_new_nodes)
     raw_steps = gpt(rendered_steps_prompt,
                     max_tokens=-1)
 
     # join response data to nodes
-    node_names = [node['name'] for node in nodes]
+    node_names = [node.get('name', '') for node in nodes if 'name' in node]
     for raw_step in raw_steps.split("\n"):
-        name, task_step_description, dependencies = [
-            x.strip() for x in raw_step.split(";")]
-        for i, node in enumerate(nodes):
-            if node['name'] == name:
-                nodes[i]['task_step_description'] = task_step_description
-                nodes[i]['dependencies'] = [dependency.strip(
-                ) for dependency in dependencies if dependency.strip() in node_names]
-                yield nodes[i]
+        try:
+            raw_step_columns = raw_step.split("|")
+            name, task_step_description, dependencies = [
+                x.strip() for x in raw_step_columns]
+            for i, node in enumerate(nodes):
+                if node['name'] == name:
+                    nodes[i]['task_step_description'] = task_step_description
+                    nodes[i]['dependencies'] = [dependency.strip(
+                    ) for dependency in dependencies if dependency.strip() in node_names]
+                    yield nodes[i]
+        except Exception as e:
+            print("ERROR get_task_plan_steps:", e)
+            print("rendered_steps_prompt:")
+            print(rendered_steps_prompt+raw_step)
 
 
 def print_task_steps(node_steps):

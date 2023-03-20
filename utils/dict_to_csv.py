@@ -14,7 +14,7 @@ def dict_to_csv(data, headers=None, delimiter=';'):
     # Write the headers and the data to the buffer
     writer.writeheader()
     for row in data:
-        row_data = {header: row[header] for header in headers}
+        row_data = {header: row.get(header, '') for header in headers}
         writer.writerow(row_data)
 
     # Get the contents of the buffer and return it as a string

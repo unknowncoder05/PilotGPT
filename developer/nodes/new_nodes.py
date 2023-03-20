@@ -8,12 +8,13 @@ def render_nodes_table(nodes_by_file, headers=["type", "name", "inputs", "output
             rendered_nodes_table += ';'.join(node.values())+';'+file
     return rendered_nodes_table, rendered_node_headers
 
-def get_new_nodes(gpt, prompt, nodes_by_file, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"], relevant_files_and_folders=None):
+def get_new_nodes(gpt, prompt, nodes_by_file, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description", "file"], relevant_files_and_folders=None):
     GET_NEW_NODES_PROMPT_FORMAT = """from this nodes (variables, functions, classes, ...) add nodes that would need to be created to complete the task
 - if none is required respond None
 - make sure to give them a descriptive name
 - give them a name that a senior developer would give
 - create them in files that can then be reused
+- add the file where the new node will be created
 task:
 {task}
 relevant files and folders:
@@ -38,7 +39,7 @@ result:
         for new_node in response.split('\n'):
             attrs = [x.strip() for x in new_node.split(';')]
             new_nodes.append(
-                dict(zip(headers+['file'], attrs))
+                dict(zip(headers, attrs))
             )
         return new_nodes
     except Exception as e:
