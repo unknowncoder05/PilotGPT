@@ -1,6 +1,8 @@
 import openai
 import os
+import re
 
+openai.api_key = os.getenv("OPENAPI_API_KEY")
 INFO = True
 TOKENS_TO_CHARACTERS = 0.75
 MAX_TOKENS = 4097
@@ -80,8 +82,9 @@ def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens
                 "content": "Give me the current file content if it exists"},
             {"role": "user", "content": input},
         ])
-    context.append({"role": "assistant",
-                "content": "The next message is the updated file you need"})
+    context.extend([{"role": "system", "content": "limit yourself to just generate usable code with no extra text"},
+        {"role": "system", "content": "expected response format = file"},
+        {"role": "system", "content": "the file should start with START and should end in END"},])
 
     response = openai.ChatCompletion.create(
         model=model,
@@ -92,7 +95,9 @@ def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens
     if many:
         return [x["message"]["content"].strip() for x in response["choices"]]
     else:
-        return response["choices"][0]["message"]["content"].strip()
+        raw_code = response["choices"][0]["message"]["content"].strip()
+        raw_code = re.sub(f"^START\s*|\s*END$", "", raw_code)
+        return raw_code.strip()
 
 
 def open_ai_model_func(model, type='completion'):
@@ -109,4 +114,3 @@ def open_ai_model_func(model, type='completion'):
         return execute
 
 
-openai.api_key = os.getenv("OPENAPI_API_KEY")
