@@ -31,7 +31,7 @@ def execute_completion_model(prompt, model="code-davinci-002", temperature=0, ma
         if max_tokens < 0:
             print("ERR: long prompt", prompt)
             return ''
-    
+
     response = openai.Completion.create(
         model=model,
         prompt=prompt,
@@ -63,6 +63,37 @@ def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", t
     else:
         return response.choices[0].text.strip()
 
+def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens=100, many=False, *args, **kwargs):
+    """
+    Executes the completion model with the given parameters and returns the list of responses.
+    """
+    if INFO:
+        print('gpt call')
+    context = [
+        {"role": "system", "content": "You are a senior software developer assistant that generates generates code files."},
+        {"role": "user", "content": instruction},
+
+    ]
+    if input:
+        context.extend([
+            {"role": "assistant",
+                "content": "Give me the current file content if it exists"},
+            {"role": "user", "content": input},
+        ])
+    context.append({"role": "assistant",
+                "content": "The next message is the updated file you need"})
+
+    response = openai.ChatCompletion.create(
+        model=model,
+        temperature=temperature,
+        messages=context,
+        *args, **kwargs
+    )
+    if many:
+        return [x["message"]["content"].strip() for x in response["choices"]]
+    else:
+        return response["choices"][0]["message"]["content"].strip()
+
 
 def open_ai_model_func(model, type='completion'):
     """
@@ -74,7 +105,7 @@ def open_ai_model_func(model, type='completion'):
         return execute
     if type == 'code_edit':
         def execute(prompt_text, instruction, *args, **kwargs):
-            return execute_code_edit_model(prompt_text, instruction, model=model, *args, **kwargs)
+            return execute_chat_code_model(prompt_text, instruction, model=model, *args, **kwargs)
         return execute
 
 

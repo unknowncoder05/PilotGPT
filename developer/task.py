@@ -3,6 +3,7 @@ from developer.clarifications import get_task_clarifications
 from developer.plan.task_plan import get_task_plan
 from developer.plan.execute import execute_task_plan
 from developer.plan.steps import print_task_steps
+import os
 
 
 class Task:
@@ -40,32 +41,34 @@ class Task:
     def apply(self, ask_confirmation=True, target_branch=None, push=True, origin_name='origin'):
         if not self.planned:
             raise Exception("you have to plan this task before executing it")
-        
+
         # print plan and ask for confirmation
         if ask_confirmation:
             print_task_steps(self.steps)
             confirmation = input("apply (y,N)") == "y"
             if not confirmation:
                 return
-        
+
         # save the name of the current branch
         current_branch = self.project.repo.active_branch.name
 
         # create a new branch and switch to it
         new_branch = self.project.repo.create_head(target_branch)
-        self.project.repo.head.reference = new_branch
+        self.project.repo.head.set_reference(new_branch)
         self.project.repo.head.reset(index=True, working_tree=True)
+        # self.project.repo.head.reset(index=True, working_tree=True)
 
         print('STEPS:', self.steps)
         # modify files
         edited_files = []
         for file_name, file_edited_content in execute_task_plan(self.code_edit_gpt, self.prompt, self.steps):
             # TODO: use join path
-            with open(file_name, 'w') as f:
+            with open(self.project.repository_path + '/' + file_name, 'w') as f:
                 f.write(file_edited_content)
             # stage changes
-            edited_files.append(file_name)
-        
+            edited_files.append(os.getcwd() + '/' +
+                                self.project.repository_path + '/' + file_name)
+
         # stage and commit changes
         self.project.repo.index.add(edited_files)
         commit_message = self.commit_message
@@ -73,10 +76,9 @@ class Task:
 
         # push
         if push:
-            origin = self.project.repo.remote(name=origin_name)
-            origin.push()
+            print("Pushing")
+            self.project.repo.remote().push(new_branch)
 
         # switch back to the original branch
-        original_branch = self.project.repo.branches[current_branch]
-        original_branch.checkout()
-
+        # original_branch = self.project.repo.branches[current_branch]
+        # original_branch.checkout()

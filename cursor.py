@@ -481,10 +481,10 @@ result:
 """
     # TODO: let it know relevant directories
     # prompt
-    rendered_nodes_table, rendered_node_headers = render_nodes_table(
+    rendered_nodes_table, _ = render_nodes_table(
         nodes_by_file)
     relevant_nodes_prompt = GET_NEW_NODES_PROMPT_FORMAT.format(
-        task=prompt, nodes=rendered_nodes_table, headers=rendered_node_headers, relevant_files_and_folders='\n'.join(relevant_files_and_folders))
+        task=prompt, nodes=rendered_nodes_table, headers=';'.join(headers), relevant_files_and_folders='\n'.join(relevant_files_and_folders))
 
     response = gpt(relevant_nodes_prompt, max_tokens=MAX_TOKENS - len(relevant_nodes_prompt),
                    temperature=0)
@@ -494,7 +494,7 @@ result:
         for new_node in response.split('\n'):
             attrs = [x.strip() for x in new_node.split(';')]
             new_nodes.append(
-                dict(zip(headers+['file'], attrs))
+                dict(zip(headers, attrs))
             )
         return new_nodes
     except Exception as e:

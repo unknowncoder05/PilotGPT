@@ -23,8 +23,8 @@ output_branch={output_branch}
 
     gpt = open_ai_model_func("text-davinci-002")
     code_edit_gpt = open_ai_model_func(
-        "code-davinci-edit-001", type="code_edit")
-    project = Project(repository_url=repository_url, repository_path='./repo', branch=input_branch)
+        "gpt-3.5-turbo", type="code_edit")
+    project = Project(repository_url=repository_url, repository_path='repo', branch=input_branch)
     task = Task(
         gpt,
         code_edit_gpt,
@@ -34,4 +34,4 @@ output_branch={output_branch}
     task.plan(rexclude_files=['migrations', 'tests', '__pycache__',
                               '.git', 'media', '.env', 'node_modules', 'build', '.cache'])
 
-    task.apply(target_branch=input_branch, ask_confirmation=False)
+    task.apply(target_branch=output_branch, ask_confirmation=False)
