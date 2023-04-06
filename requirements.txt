@@ -1,5 +1,4 @@
 GitPython
 openai==0.27.2
 
-psycopg2
-psycopg2-binary
+psycopg2-binary==2.9.6
