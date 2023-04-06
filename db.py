@@ -12,7 +12,7 @@ class TaskStatus(Enum):
 def change_task_status(task_id, new_status=TaskStatus.SUCCESS.value[0], error_message=''):
     # Establish a connection to the database
     conn = psycopg2.connect(database=os.getenv('DB_DATABASE'), user=os.getenv('DB_USER'),
-                            password=os.getenv('DB_PASSWORD'), host=os.getenv('DB_HOST'), port=os.getenv('DB_PORT'))
+                            password=os.getenv('DB_PASSWORD'), host=os.getenv('DB_HOST'), port=os.getenv('DB_PORT', '5432'))
 
     # Open a cursor to perform database operations
     cur = conn.cursor()
