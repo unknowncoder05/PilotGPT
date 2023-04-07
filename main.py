@@ -4,9 +4,9 @@ from gpt.models import open_ai_model_func
 from db import change_task_status, TaskStatus
 import sys
 
-
+print("LET'S START")
 if __name__ == '__main__':
-    if len(sys.argv) < 4 + 1:
+    if len(sys.argv) != 5 + 1:
         print("Usage: python main.py <repository_url> <task_prompt> <input_branch> <output_branch> <id>")
         sys.exit(1)
     repository_url = sys.argv[1]

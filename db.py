@@ -10,8 +10,7 @@ class TaskStatus(Enum):
     ERROR = 2, 'Error'
 
 
-DB_CREDENTIALS = os.getenv('DB_CREDENTIALS')
-DB_CREDENTIALS = json.loads(DB_CREDENTIALS)
+DB_CREDENTIALS = json.loads(os.getenv('DB_CREDENTIALS'))
 DATABASE_DEFAULT = {
     'ENGINE': DB_CREDENTIALS.get('DB_ENGINE', 'django.db.backends.postgresql'),
     'NAME': DB_CREDENTIALS.get('DB_DATABASE'),
