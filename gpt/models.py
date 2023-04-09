@@ -70,7 +70,7 @@ def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", t
     else:
         return response.choices[0].text.strip()
 
-def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_tables=[], verbose_headers=[], many=False, max_tokens=100, temperature=0, chunk_able=False,*args, **kwargs):
+def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_tables=[], verbose_headers=[], many=False, max_tokens=100, empty_field_response_token="", temperature=0, chunk_able=False,*args, **kwargs):
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls 
     # TODO: validate verbose_headers and headers have the same length
     logger.debug('gpt call')
@@ -110,7 +110,8 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
         {"role": "user", "content": context},
         {"role": "system", "content": f"limit yourself to just complete the rows based on the columns {rendered_headers}"},
         {"role": "system", "content": f"use a line per row"},
-        {"role": "system", "content": f"if no row can be generated, just write {empty_response_token}"},
+        {"role": "system", "content": f"if a field can not be generated, just write {empty_field_response_token}"},
+        {"role": "system", "content": f"if no row can be generated, just left {empty_response_token if empty_response_token else 'empty space'}"},
         {"role": "system", "content": f"expected response format = {expected_result_type}"},
         {"role": "system", "content": f"the {expected_result_type} should start with {start_token} and should end in {end_token}"},
         *context_tables_messages,

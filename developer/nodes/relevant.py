@@ -2,7 +2,7 @@ from developer.nodes.from_file import get_file_nodes
 from get_logger import logger
 
 
-def get_relevant_nodes(gpt, prompt, relevant_files, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
+def get_relevant_nodes(gpt, table_completion_gpt, prompt, relevant_files, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
     GET_RELEVANT_NODES_PROMPT_FORMAT = """find the relevant related node names for the task
 task:
 {task}
@@ -14,7 +14,7 @@ related node names:
 -"""
     nodes_by_file = {}
     for file_name in relevant_files:
-        file_nodes = get_file_nodes(gpt, file_name)
+        file_nodes = get_file_nodes(table_completion_gpt, file_name)
         if not file_nodes:
             continue
         rendered_nodes = '\t'.join(headers)
