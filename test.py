@@ -43,5 +43,21 @@ def test_get_relevant_nodes():
         task_prompts, selection_gpt=selection_gpt, table_completion_gpt=None, nodes_by_file=nodes_by_file)
     print(relevant_nodes)
 
+def test_get_new_nodes():
+    table_completion = open_ai_model_func("gpt-3.5-turbo", type="table_completion")
+    task_prompts = "add a lamborghini car class that has a price of one million dollars"
+    nodes = [
+        {'file': './car.py', 'type': 'class', 'name': 'Car', 'inputs': '', 'outputs': '', 'parent class': 'object',
+         'is parent': 'True', 'short description': 'A class that represents a car.'},
+        {'file': './cars/Ford.py', 'type': 'class', 'name': 'Ford', 'inputs': '', 'outputs': '', 'parent class': 'Car', 'is parent': 'True',
+         'short description': 'A class that represents a Ford car and inherits from the Car class.'},
+        {'file': './cars/Ferrari.py', 'type': 'class', 'name': 'Ferrari', 'inputs': '', 'outputs': '', 'parent class': 'Car', 'is parent': 'True',
+         'short description': 'A class that represents a Ferrari car and inherits from the Car class.'}
+    ]
+    relevant_files_and_folders = ['./car.py', './cars', './cars/Ford.py', './cars/Ferrari.py']
+    relevant_nodes = get_new_nodes(
+        task_prompts, nodes, table_completion_gpt=table_completion, relevant_files_and_folders=relevant_files_and_folders)
+    print(relevant_nodes)
 
-test_get_relevant_nodes()
+
+test_get_new_nodes()

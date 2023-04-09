@@ -9,7 +9,7 @@ def get_relevant_nodes(prompt, selection_gpt, table_completion_gpt=None, relevan
         # TODO: make nodes_by_file an iterable
         # TODO: validate table_completion_gpt is set if not nodes_by_file
         nodes_by_file = [(file_name, get_file_nodes(table_completion_gpt, file_name)) for file_name in relevant_files]
-    relevant_nodes_by_file = {}
+    relevant_nodes = []
     for file_name, file_nodes in nodes_by_file:
         # TODO: optimize node file names
         if not file_nodes:
@@ -26,6 +26,7 @@ def get_relevant_nodes(prompt, selection_gpt, table_completion_gpt=None, relevan
             chunk_able=True,
         )
         logger.debug(f"raw_relevant_nodes: {raw_relevant_nodes}")
-        relevant_nodes_by_file[file_name] = raw_relevant_nodes
+        raw_relevant_nodes['file'] = file_name
+        relevant_nodes.append(raw_relevant_nodes)
 
-    return relevant_nodes_by_file
+    return relevant_nodes

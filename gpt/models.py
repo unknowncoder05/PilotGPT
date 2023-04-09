@@ -71,7 +71,7 @@ def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", t
         return response.choices[0].text.strip()
 
 
-def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_tables=[], verbose_headers=[], many=False, max_tokens=100, empty_field_response_token="", temperature=0, chunk_able=False, *args, **kwargs):
+def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_tables=[], verbose_headers=[], many=False, max_tokens=100, empty_field_response_token="", extra_requirements=[], temperature=0, chunk_able=False, *args, **kwargs):
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls
     # TODO: validate verbose_headers and headers have the same length
     logger.debug('gpt call')
@@ -107,7 +107,7 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
         context_tables_messages = []
 
     messages = [
-        {"role": "system", "content": "You are a software planning assistant"},
+        {"role": "system", "content": f"You are a software planning assistant who generates {expected_result_type}"},
         {"role": "user", "content": context},
         {"role": "system", "content": f"limit yourself to just complete the rows based on the columns {rendered_headers}"},
         {"role": "system", "content": f"use a line per row"},
@@ -116,6 +116,7 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
         {"role": "system", "content": f"expected response format = {expected_result_type}"},
         {"role": "system", "content": f"the {expected_result_type} should start with {start_token} and should end in {end_token}"},
         *context_tables_messages,
+        *[{"role": "system", "content":extra_requirement} for extra_requirement in extra_requirements],
         {"role": "assistant", "content": rendered_headers},
     ]
     # log_messages(messages)
@@ -129,8 +130,9 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
         if raw_response == expected_result_type:
             return []
         raw_rows = re.sub(f"^START\s*|\s*END$", "", raw_response).split('\n')
+        raw_rows = [x.strip() for x in raw_rows]
         raw_table = [delimiter.join(headers)] + raw_rows
-        return csv_to_list(raw_table)
+        return csv_to_list(raw_table, headers=headers)
 
     if many:
         return [
@@ -203,9 +205,6 @@ def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_fie
         temperature=0.2,
         messages=messages,
     )
-    print("selector_field_verbose:", selector_field_verbose)
-    print("messages:", messages)
-    print("responseAAAAAAAAA:", response)
 
     def clean_response(raw_response):
         if raw_response == expected_result_type:
