@@ -72,6 +72,7 @@ def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", t
 
 def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_tables=[], verbose_headers=[], many=False, max_tokens=100, temperature=0, chunk_able=False,*args, **kwargs):
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls 
+    # TODO: validate verbose_headers and headers have the same length
     logger.debug('gpt call')
     if max_tokens == -1:
         max_tokens = int(MAX_TOKENS - len(context) / TOKENS_TO_CHARACTERS)
