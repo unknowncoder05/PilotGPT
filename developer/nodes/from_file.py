@@ -1,5 +1,6 @@
 import hashlib
 from developer.nodes.from_file_cache import get_file_nodes_cache, save_file_nodes_cache
+from get_logger import logger
 
 def get_file_nodes(gpt, file_path, use_cache=True, splitter=';', headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
     GET_NODES_PROMPT_FORMAT = """from this file write the base nodes (variables, functions, function call, classes, ...) that would need to be modified
@@ -33,6 +34,7 @@ parent nodes:
         file_content="\n".join(base_lines), headers=splitter.join(headers))
     result = gpt(prompt, max_tokens=-1,
                  temperature=0, stop=['parent nodes:', 'child nodes:'])
+    logger.debug(f"{prompt}{result}")
     if 'NO NODES FOUND' in result:
         return []
     raw_nodes = result.split('\n')

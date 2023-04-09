@@ -1,6 +1,8 @@
 import json
 import os
 import hashlib
+from get_logger import logger
+
 
 def get_file_nodes_cache(file_path, file_hash=None, cache_directory='pilot.cache'):
     # TODO: use path.join
@@ -25,8 +27,9 @@ def get_file_nodes_cache(file_path, file_hash=None, cache_directory='pilot.cache
 
         return cache.get('nodes')
     except Exception as e:
-        print("CACHE ERROR", e)
+        logger.error("CACHE ERROR", e)
         return None
+
 
 def save_file_nodes_cache(file_path, nodes, file_hash=None, cache_directory='pilot.cache'):
     # TODO: use path.join

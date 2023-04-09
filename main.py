@@ -3,18 +3,18 @@ from project.project import Project
 from gpt.models import open_ai_model_func
 from db import change_task_status, TaskStatus
 import sys
+from get_logger import logger
 
-print("LET'S START")
 if __name__ == '__main__':
     if len(sys.argv) != 5 + 1:
-        print("Usage: python main.py <repository_url> <task_prompt> <input_branch> <output_branch> <id>")
+        logger.error("Usage: python main.py <repository_url> <task_prompt> <input_branch> <output_branch> <id>")
         sys.exit(1)
     repository_url = sys.argv[1]
     task_prompt = sys.argv[2]
     input_branch = sys.argv[3]
     output_branch = sys.argv[4]
     task_id = sys.argv[5]
-    print(f"""task_id={task_id}
+    logger.debug(f"""task_id={task_id}
 task_prompt={task_prompt}
 input_branch={input_branch}
 output_branch={output_branch}
@@ -25,10 +25,17 @@ output_branch={output_branch}
         gpt = open_ai_model_func("text-davinci-002")
         code_edit_gpt = open_ai_model_func(
             "gpt-3.5-turbo", type="code_edit")
-        project = Project(repository_url=repository_url, repository_path='repo', branch=input_branch)
+        table_completion_gpt = open_ai_model_func(type="table_completion")
+
+        project = Project(
+            repository_url=repository_url,
+            repository_path='repo',
+            branch=input_branch,
+        )
         task = Task(
             gpt,
             code_edit_gpt,
+            table_completion_gpt,
             project=project,
             prompt=task_prompt,
         )

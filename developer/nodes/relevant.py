@@ -1,4 +1,6 @@
 from developer.nodes.from_file import get_file_nodes
+from get_logger import logger
+
 
 def get_relevant_nodes(gpt, prompt, relevant_files, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
     GET_RELEVANT_NODES_PROMPT_FORMAT = """find the relevant related node names for the task
@@ -34,6 +36,7 @@ related node names:
             nodes_by_file[file_name] = [
                 node for node in file_nodes if 'name' in node and node['name'] in relevant_node_names]
         except Exception as e:
-            print('ERROR get_relevant_nodes', e, relevant_node)
+            logger.error(e)
+            logger.debug(relevant_node)
 
     return nodes_by_file

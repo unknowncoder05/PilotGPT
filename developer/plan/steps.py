@@ -1,4 +1,5 @@
 from utils.dict_to_csv import dict_to_csv
+from get_logger import logger
 
 
 def get_task_plan_steps(gpt, prompt, relevant_nodes, new_nodes):
@@ -9,7 +10,7 @@ relevant resources:
 
 steps example format:
 resource name | step description | dependent on resources
-greater | add a username string input and then print it with a greater message; |
+greater | add a username string input and then log it with a greater message; |
 bulk_greater | receive many usernames and calls the greater function for each one of them | greater
 main | add a call to the bulk_greater function with the names karl, leo and juliet | bulk_greater, greater
 
@@ -49,24 +50,24 @@ resource name | step description | dependent on resources
                     ) for dependency in dependencies if dependency.strip() in node_names]
                     yield nodes[i]
         except Exception as e:
-            print("ERROR get_task_plan_steps:", e)
-            print("rendered_steps_prompt:")
-            print(rendered_steps_prompt+raw_step)
+            logger.error(f"get_task_plan_steps: {e}")
+            logger.debug("rendered_steps_prompt:")
+            logger.debug(rendered_steps_prompt+raw_step)
 
 
-def print_task_steps(node_steps):
-    print("# modifying")
+def log_task_steps(node_steps):
+    logger.debug("# modifying")
     existing_nodes = [
         node_step for node_step in node_steps if node_step.get('exists')]
     if len(existing_nodes) > 0:
-        print(dict_to_csv(existing_nodes, delimiter='\t'))
+        logger.debug(dict_to_csv(existing_nodes, delimiter='\t'))
     else:
-        print("-")
+        logger.debug("-")
 
-    print("# creating:")
+    logger.debug("# creating:")
     new_nodes = [
         node_step for node_step in node_steps if not node_step.get('exists')]
     if len(new_nodes) > 0:
-        print(dict_to_csv(new_nodes, delimiter='\t'))
+        logger.debug(dict_to_csv(new_nodes, delimiter='\t'))
     else:
-        print("-")
+        logger.debug("-")

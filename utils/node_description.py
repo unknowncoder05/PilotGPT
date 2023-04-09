@@ -92,7 +92,6 @@ def node_verbose_definition(node, indent: str = '') -> str:
         return 'None'
     else:
         pass
-        # print(type(node))
     return result
 
 

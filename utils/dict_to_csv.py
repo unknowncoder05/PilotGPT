@@ -20,3 +20,4 @@ def dict_to_csv(data, headers=None, delimiter=';'):
     # Get the contents of the buffer and return it as a string
     csv_str = csv_buffer.getvalue()
     return csv_str
+    
