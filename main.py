@@ -26,6 +26,7 @@ output_branch={output_branch}
         code_edit_gpt = open_ai_model_func(
             "gpt-3.5-turbo", type="code_edit")
         table_completion_gpt = open_ai_model_func(type="table_completion")
+        selection_gpt = open_ai_model_func(type="selection_gpt")
 
         project = Project(
             repository_url=repository_url,
@@ -33,9 +34,10 @@ output_branch={output_branch}
             branch=input_branch,
         )
         task = Task(
-            gpt,
-            code_edit_gpt,
-            table_completion_gpt,
+            gpt=gpt,
+            code_edit_gpt=code_edit_gpt,
+            table_completion_gpt=table_completion_gpt,
+            selection_gpt=selection_gpt,
             project=project,
             prompt=task_prompt,
         )

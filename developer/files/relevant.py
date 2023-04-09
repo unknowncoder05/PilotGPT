@@ -5,6 +5,7 @@ from get_logger import logger
 TOKENS_TO_CHARACTERS = 0.75
 MAX_TOKENS = 4097
 
+
 def list_files_recursively(dir_path: str, exclude_files=[], rexclude_files=[]):
     for root, dirs, files in os.walk(dir_path):
         for file in files:
@@ -17,6 +18,7 @@ def list_files_recursively(dir_path: str, exclude_files=[], rexclude_files=[]):
             if not is_valid:
                 continue
             yield file_path
+
 
 def slice_list_by_tokens(items, tokens_to_characters=TOKENS_TO_CHARACTERS, max_tokens=MAX_TOKENS):
     current_list = []
@@ -33,6 +35,7 @@ def slice_list_by_tokens(items, tokens_to_characters=TOKENS_TO_CHARACTERS, max_t
     if current_list:
         yield current_list
 
+
 def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None, exclude_files=[], rexclude_files=[], minimum_file_relevance_rating=2):
     GET_RELEVANT_FILES = """get the relevant files (files that might need to be modified or that contain tools or architectures needed to complete the task) for this software development task: {prompt}"""
     # either target_dir or files should be set
@@ -44,23 +47,24 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
     # optimize file names since for the model "./long/project/path/file.py" and "./file.py" mean the same but is cheaper
     # TODO: detect automatically the project path
     if target_dir:
-        optimized_file_names = [{"title": x.replace(target_dir+"/", "")} for x in files]
+        optimized_file_names = [
+            {"title": x.replace(target_dir+"/", "")} for x in files]
     else:
-        optimized_file_names= [{"title": x} for x in files]
-    
+        optimized_file_names = [{"title": x} for x in files]
+
     # table generation
     raw_relevant_files = table_completion_gpt(
         GET_RELEVANT_FILES.format(prompt=prompt),
         max_tokens=-1,
         temperature=0,
         headers=["file_name", "relevance_rating"],
-                verbose_headers=["file name (required)", "relevance rating[0,10]"],
+        verbose_headers=["file name (required)", "relevance rating[0,10]"],
         context_tables=[
-                    {
-                        "name": "related files",
+            {
+                "name": "related files",
                         "data": optimized_file_names
-                    },
-                ],
+            },
+        ],
         chunk_able=True
     )
     logger.debug(f"raw_relevant_files: {raw_relevant_files}")
@@ -69,7 +73,8 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
         for file_response in raw_relevant_files:
             # get the original base path back
             if target_dir:
-                file_name = target_dir+'/'+file_response['file_name'].replace('./', '')
+                file_name = target_dir+'/' + \
+                    file_response['file_name'].replace('./', '')
             else:
                 file_name = file_response['file_name']
             if int(file_response['relevance_rating']) > minimum_file_relevance_rating:

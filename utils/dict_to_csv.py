@@ -1,7 +1,7 @@
 from io import StringIO
 import csv
 
-def dict_to_csv(data, headers=None, delimiter=';'):
+def dict_to_csv(data, headers=None, verbose_headers=None, delimiter=';'):
     # Get headers from the specified headers, or use the keys of the first dictionary in the list if headers is not specified
     headers = headers if headers is not None else list(
         data[0].keys()) if data else []
@@ -9,7 +9,7 @@ def dict_to_csv(data, headers=None, delimiter=';'):
     # Create a StringIO object for writing the CSV
     csv_buffer = StringIO()
     writer = csv.DictWriter(
-        csv_buffer, fieldnames=headers, delimiter=delimiter)
+        csv_buffer, fieldnames=headers if not verbose_headers else headers, delimiter=delimiter)
 
     # Write the headers and the data to the buffer
     writer.writeheader()

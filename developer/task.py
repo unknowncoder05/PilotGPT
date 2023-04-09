@@ -14,12 +14,13 @@ class Task:
     planned: bool = False
 
     # TODO: proper types
-    def __init__(self, gpt, code_edit_gpt, table_completion_gpt, project: Project, prompt, commit_message=None) -> None:
+    def __init__(self, gpt, code_edit_gpt, table_completion_gpt, selection_gpt, project: Project, prompt, commit_message=None) -> None:
         self.gpt = gpt
         self.code_edit_gpt = code_edit_gpt
         self.table_completion_gpt = table_completion_gpt
         self.project = project
         self.prompt = prompt
+        self.selection_gpt = selection_gpt
 
         if commit_message == None:
             self.commit_message = prompt
@@ -34,7 +35,7 @@ class Task:
             logger.debug(clarifications)
             return
 
-        steps = get_task_plan(self.gpt,self.table_completion_gpt, self.prompt, target_dir=self.project.repository_path,
+        steps = get_task_plan(self.gpt, self.table_completion_gpt, self.selection_gpt, self.prompt, target_dir=self.project.repository_path,
                               exclude_files=exclude_files, rexclude_files=rexclude_files)
         self.steps = steps
         self.planned = True
