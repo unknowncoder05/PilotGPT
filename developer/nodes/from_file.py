@@ -3,7 +3,7 @@ from developer.nodes.from_file_cache import get_file_nodes_cache, save_file_node
 from get_logger import logger
 
 
-def get_file_nodes(table_completion_gpt, file_path=None, file_content=None, use_cache=True, headers=["type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
+def get_file_nodes(table_completion_gpt, file_path=None, file_content=None, use_cache=True, headers=["node_type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
     # TODO: make sure file_path or file_content
     GET_NODES_PROMPT_FORMAT = """from this file write the base nodes (variables, functions, function call, classes, ...)
 file content:
@@ -30,7 +30,7 @@ file content:
         prompt, max_tokens=-1,
         temperature=0,
         headers=headers,
-        verbose_headers=["type", "name", "inputs", "outputs", "is parent[True,False]", "parent class(the class from which it inherits)", "short description"],
+        verbose_headers=["node_type", "name", "inputs", "outputs", "is parent[True,False]", "parent class(the class from which it inherits)", "short description"],
     )
     logger.debug(f"file_nodes: {file_nodes}")
     nodes = []

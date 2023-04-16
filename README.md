@@ -26,6 +26,7 @@ this tool is intended to write clean code for simple tasks in large projects
 - human corrections, if fails solve and go back to step 1 (not in scope)
 
 # Improvements
+- if target branch is output branch, just add the commit and push
 - if repository already exists, change name or make a (stage,) pull and checkout
 - if branch already exits throw an error
 - if nothing to push, throw an error

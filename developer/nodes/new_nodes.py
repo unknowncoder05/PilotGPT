@@ -3,9 +3,9 @@ import os
 
 
 def get_new_nodes(prompt, nodes, table_completion_gpt,
-                  headers=["type", "file_path", "file_name", "file_extension", "name", "inputs",
+                  headers=["node_type", "file_path", "file_name", "file_extension", "name", "inputs",
                            "outputs", "is parent", "parent class", "short description"],
-                  verbose_headers=["type", "file_path(required, make it descriptive)", "file_name(required)", "file_extension(required)", "name(required)",
+                  verbose_headers=["node_type", "file_path(required, make it descriptive)", "file_name(required)", "file_extension(required)", "name(required)",
                                    "inputs(leave blank if class nodes)", "outputs(leave blank if class nodes)", "is parent[one of True,False]", "parent class(the class from which it inherits)", "short description"],
                   relevant_files_and_folders=None
                   ):

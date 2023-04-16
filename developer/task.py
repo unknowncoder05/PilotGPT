@@ -42,6 +42,7 @@ class Task:
         return steps
 
     def apply(self, ask_confirmation=True, target_branch=None, push=True):
+        # TODO: divide this logic in functions
         if not self.planned:
             raise Exception("you have to plan this task before executing it")
 
