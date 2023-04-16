@@ -1,10 +1,18 @@
 from io import StringIO
 import csv
 
+def get_all_keys(list_of_dicts):
+    all_keys = []
+    for d in list_of_dicts:
+        for key in d.keys():
+            if key not in all_keys:
+                all_keys.append(key)
+    return all_keys
+
 def dict_to_csv(data, headers=None, verbose_headers=None, delimiter=';'):
     # Get headers from the specified headers, or use the keys of the first dictionary in the list if headers is not specified
-    headers = headers if headers is not None else list(
-        data[0].keys()) if data else []
+    if headers is None:
+        headers = get_all_keys(data)
 
     # Create a StringIO object for writing the CSV
     csv_buffer = StringIO()

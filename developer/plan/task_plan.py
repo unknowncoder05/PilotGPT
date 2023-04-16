@@ -22,7 +22,7 @@ def get_task_plan(gpt, table_completion_gpt, selection_gpt, prompt, target_dir, 
         new_nodes = get_new_nodes(
             prompt=prompt, nodes=relevant_nodes, table_completion_gpt=table_completion_gpt, relevant_files_and_folders=relevant_files)
     logger.debug(f"new_nodes: {new_nodes}")
-    steps = get_task_plan_steps(gpt, prompt, relevant_nodes, new_nodes)
+    steps = get_task_plan_steps(prompt, relevant_nodes, new_nodes, table_completion_gpt=table_completion_gpt)
     steps = list(steps)
 
     log_task_steps(steps)

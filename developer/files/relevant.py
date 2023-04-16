@@ -65,6 +65,7 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
                         "data": optimized_file_names
             },
         ],
+        extra_requirements = ["write only tasks on the table", ],
         chunk_able=True
     )
     logger.debug(f"raw_relevant_files: {raw_relevant_files}")
@@ -77,6 +78,8 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
                     file_response['file_name'].replace('./', '')
             else:
                 file_name = file_response['file_name']
-            if int(file_response['relevance_rating']) > minimum_file_relevance_rating:
+            if not os.path.exists(file_name):
+                continue
+            if int(file_response.get('relevance_rating', '0')) > minimum_file_relevance_rating:
                 relevant_directories.append(file_name)
     return relevant_directories

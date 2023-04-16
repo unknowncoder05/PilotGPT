@@ -97,7 +97,7 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
             rendered_context_table = context_table['name'] + '\n' + \
                 dict_to_csv(context_table['data'], delimiter=delimiter)
             rendered_context_tables.append(rendered_context_table)
-        if rendered_context_table:
+        if rendered_context_tables:
             context_tables_messages = [
                 {"role": "system", "content": "use this related data if needed" + '\n' + '\n'.join(rendered_context_tables)}]
         else:
@@ -125,12 +125,13 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
         temperature=0.2,
         messages=messages,
     )
+    logger.debug(f"gpt raw response: {response}")
 
     def clean_response(raw_response):
         if raw_response == expected_result_type:
             return []
         raw_rows = re.sub(f"^START\s*|\s*END$", "", raw_response).split('\n')
-        raw_rows = [x.strip() for x in raw_rows]
+        raw_rows = [re.sub(r'\s*,\s*|\s*,|,\s*', ',', raw_row) for raw_row in raw_rows]
         raw_table = [delimiter.join(headers)] + raw_rows
         return csv_to_list(raw_table, headers=headers)
 

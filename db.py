@@ -34,8 +34,10 @@ def change_task_status(task_id, new_status=TaskStatus.SUCCESS.value[0], error_me
     cur = conn.cursor()
 
     table = 'prompts_task'
-    cur.execute(
-        f"UPDATE {table} SET status='{new_status}', error_message='{error_message}' WHERE id='{task_id}'")
+    query = f"UPDATE {table} SET status=%s, error_message=%s WHERE id=%s"
+    values = (new_status, error_message, task_id)
+    values = tuple(v.replace("'", "''") if isinstance(v, str) else v for v in values)
+    cur.execute(query, values)
 
     # Commit the changes to the database
     conn.commit()
