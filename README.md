@@ -8,12 +8,12 @@ this tool is intended to write clean code for simple tasks in large projects
 
 
 ## 2. human readable (before quality since changes to logic might happen)
-- clean code and make it human readable (not implemented)
-- relevant comments (not implemented)
+- clean code and make it human readable
+- relevant comments
 - add documentation (not implemented)
 
 ## 3. quality
-- check for bugs, if founds solve and go back to step 1 (not implemented)
+- check for bugs, if founds solve them
 - write test (not implemented)
 - run tests, if fails go back to step 1 (not in scope)
 - on failed tests, run debugging and solving software (not in scope)

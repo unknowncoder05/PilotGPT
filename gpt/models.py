@@ -117,6 +117,7 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
         {"role": "system", "content": f"the {expected_result_type} should start with {start_token} and should end in {end_token}"},
         *context_tables_messages,
         *[{"role": "system", "content":extra_requirement} for extra_requirement in extra_requirements],
+        {"role": "system", "content": f"since your output is going to be transform into a table, follow the column format strictly otherwise bad things will happen"},
         {"role": "assistant", "content": rendered_headers},
     ]
     # log_messages(messages)
@@ -130,7 +131,9 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
     def clean_response(raw_response):
         if raw_response == expected_result_type:
             return []
+        # extract just relevant code
         raw_rows = re.sub(f"^START\s*|\s*END$", "", raw_response).split('\n')
+        # remove spaces between rows
         raw_rows = [re.sub(r'\s*,\s*|\s*,|,\s*', ',', raw_row) for raw_row in raw_rows]
         raw_table = [delimiter.join(headers)] + raw_rows
         return csv_to_list(raw_table, headers=headers)
@@ -232,6 +235,15 @@ def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_fie
         return clean_response(raw_response)
 
 
+def extract_text_between_tokens(text, start_token, end_token):
+    pattern = re.escape(start_token) + "(.*?)" + re.escape(end_token)
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1)
+    else:
+        return None
+
+
 def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens=100, many=False, *args, **kwargs):
     """
     Executes the completion model with the given parameters and returns the list of responses.
@@ -250,7 +262,7 @@ def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens
         ])
     context.extend([{"role": "system", "content": "limit yourself to just generate usable code with no extra text"},
                     {"role": "system", "content": "expected response format = file"},
-                    {"role": "system", "content": "the file should start with START and should end in END"},])
+                    {"role": "system", "content": "the output file should start with the literal words START and should end in END, since the output is going to be processed with a regex, nothing else you write is going to be used"},])
 
     response = openai.ChatCompletion.create(
         model=model,
@@ -262,7 +274,7 @@ def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens
         return [x["message"]["content"].strip() for x in response["choices"]]
     else:
         raw_code = response["choices"][0]["message"]["content"].strip()
-        raw_code = re.sub(f"^START\s*|\s*END$", "", raw_code)
+        raw_code = extract_text_between_tokens(raw_code, "START", "END")
         return raw_code.strip()
 
 
