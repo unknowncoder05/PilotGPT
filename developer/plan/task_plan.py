@@ -5,7 +5,7 @@ from developer.nodes.new_nodes import get_new_nodes
 from get_logger import logger
 
 
-def get_task_plan(gpt, table_completion_gpt, selection_gpt, prompt, target_dir, relevant_files=None, relevant_nodes=None, new_nodes=None, exclude_files=None, rexclude_files=None):
+def get_task_plan(table_completion_gpt, selection_gpt, prompt, target_dir, relevant_files=None, relevant_nodes=None, new_nodes=None, exclude_files=None, rexclude_files=None):
     # Relevant files
     if not relevant_files:
         relevant_files = get_relevant_files(

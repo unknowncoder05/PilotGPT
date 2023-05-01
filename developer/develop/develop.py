@@ -4,7 +4,6 @@ def develop_task(
         content,
         dependency_nodes,
         file,
-        exists,
         node_type,
         name,
         inputs=[],
@@ -16,7 +15,7 @@ def develop_task(
     ):
     rendered_dependency_nodes = dict_to_csv(dependency_nodes, headers=[
                                     "node_type", "name", "inputs", "outputs", "parent class", "short description", "file"], delimiter=';')
-    
+    exists = len(content) > 0
     if exists:
         instruction = f"""
 current file: {file}

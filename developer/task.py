@@ -15,7 +15,7 @@ class Task:
 
     # TODO: proper types
     def __init__(self, gpt, code_edit_gpt, table_completion_gpt, selection_gpt, project: Project, prompt, commit_message=None) -> None:
-        self.gpt = gpt
+        self.gpt = gpt # TODO: remove
         self.code_edit_gpt = code_edit_gpt
         self.table_completion_gpt = table_completion_gpt
         self.project = project
@@ -35,7 +35,7 @@ class Task:
             logger.debug(clarifications)
             return
 
-        steps = get_task_plan(self.gpt, self.table_completion_gpt, self.selection_gpt, self.prompt, target_dir=self.project.repository_path,
+        steps = get_task_plan(self.table_completion_gpt, self.selection_gpt, self.prompt, target_dir=self.project.repository_path,
                               exclude_files=exclude_files, rexclude_files=rexclude_files)
         self.steps = steps
         self.planned = True
@@ -67,11 +67,10 @@ class Task:
         edited_files = []
         for file_name, file_edited_content in execute_task_plan(self.code_edit_gpt, self.prompt, self.steps):
             # TODO: use join path
-            with open(self.project.repository_path + '/' + file_name, 'w') as f:
+            with open(file_name, 'w') as f:
                 f.write(file_edited_content)
             # stage changes
-            edited_files.append(os.getcwd() + '/' +
-                                self.project.repository_path + '/' + file_name)
+            edited_files.append(os.getcwd() + '/' + file_name)
 
         # stage and commit changes
         self.project.repo.index.add(edited_files)

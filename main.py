@@ -6,6 +6,7 @@ import sys
 from get_logger import logger
 import traceback
 
+print("LOG TEST")
 if __name__ == '__main__':
     if len(sys.argv) != 5 + 1:
         logger.error(

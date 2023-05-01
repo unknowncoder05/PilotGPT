@@ -26,7 +26,9 @@ def get_relevant_nodes(prompt, selection_gpt, table_completion_gpt=None, relevan
             chunk_able=True,
         )
         logger.debug(f"raw_relevant_nodes: {raw_relevant_nodes}")
-        raw_relevant_nodes['file'] = file_name
-        relevant_nodes.append(raw_relevant_nodes)
+        # set file to all new nodes
+        for i in range(len(raw_relevant_nodes)):
+            raw_relevant_nodes[i]['file'] = file_name
+        relevant_nodes.extend(raw_relevant_nodes)
 
     return relevant_nodes
