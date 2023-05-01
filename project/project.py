@@ -19,5 +19,7 @@ class Project:
         if repository_url:
             self.repo = clone_repository(
                 repository_url, repository_path, branch=branch)
+            remote = self.repo.remote()
+            remote.set_url(repository_url)
         elif repository_path:
             self.repo = Repo(repository_path)

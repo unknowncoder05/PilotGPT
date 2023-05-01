@@ -54,3 +54,5 @@ output_branch={output_branch}
     except Exception as e:
         logger.error(traceback.format_exc())
         change_task_status(task_id, TaskStatus.ERROR.value[0], str(e))
+        exit(1)
+    exit(0)

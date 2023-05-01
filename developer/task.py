@@ -57,6 +57,7 @@ class Task:
         # current_branch = self.project.repo.active_branch.name
 
         # create a new branch and switch to it
+        # TODO: add the project specific functionalities to the project class 
         new_branch = self.project.repo.create_head(target_branch)
         self.project.repo.head.set_reference(new_branch)
         self.project.repo.head.reset(index=True, working_tree=True)
@@ -67,10 +68,11 @@ class Task:
         edited_files = []
         for file_name, file_edited_content in execute_task_plan(self.code_edit_gpt, self.prompt, self.steps):
             # TODO: use join path
-            with open(file_name, 'w') as f:
+            with open(self.project.repository_path + '/' + file_name, 'w') as f:
                 f.write(file_edited_content)
             # stage changes
-            edited_files.append(os.getcwd() + '/' + file_name)
+            edited_files.append(os.getcwd() + '/' +
+                                self.project.repository_path + '/' + file_name)
 
         # stage and commit changes
         self.project.repo.index.add(edited_files)
@@ -80,7 +82,8 @@ class Task:
         # push
         if push:
             logger.info("Pushing")
-            self.project.repo.remote().push(new_branch)
+            remote = self.project.repo.remote()
+            remote.push(new_branch)
 
         # switch back to the original branch
         # original_branch = self.project.repo.branches[current_branch]
