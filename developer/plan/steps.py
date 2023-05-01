@@ -8,7 +8,7 @@ def get_task_plan_steps(prompt, relevant_nodes, new_nodes, table_completion_gpt,
                         verbose_headers=['step description',
                                          'dependent on resources'],
                         ):
-    TASK_PLAN_STEPS = """generate the required actions on each node in order to complete the task: {prompt}"""
+    TASK_PLAN_STEPS = """generate the general required actions on each node in order to complete the task: {prompt}"""
     # TODO: handle nodes with same name
 
     # join nodes

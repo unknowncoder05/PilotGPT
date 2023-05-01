@@ -3,10 +3,10 @@ import os
 
 
 def get_new_nodes(prompt, nodes, table_completion_gpt,
-                  headers=["node_type", "file_path", "file_name", "file_extension", "name", "inputs",
-                           "outputs", "is parent", "parent class", "short description"],
-                  verbose_headers=["node_type", "file_path(required, make it descriptive)", "file_name(required)", "file_extension(required)", "name(required)",
-                                   "inputs(leave blank if class nodes)", "outputs(leave blank if class nodes)", "is parent[one of True,False]", "parent class(the class from which it inherits)", "short description"],
+                  headers=["node_type", "file_path", "file_name", "file_extension", "name", "short description", "inputs",
+                           "outputs", "is parent", "parent class"],
+                  verbose_headers=["node_type", "file_path(required, make it descriptive)", "file_name(required)", "file_extension(required)", "name(required)", "short description",
+                                   "inputs(leave blank if class nodes)", "outputs(leave blank if class nodes)", "is parent[one of True,False]", "parent class(the class from which it inherits)"],
                   relevant_files_and_folders=None
                   ):
     GET_NEW_NODES_PROMPT_FORMAT = """from this nodes (variables, functions, classes, ...) add nodes that would need to be created to complete the task: {prompt}"""
