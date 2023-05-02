@@ -66,7 +66,7 @@ class Task:
         logger.info(f'STEPS: {self.steps}')
         # modify files
         edited_files = []
-        for file_name, file_edited_content in execute_task_plan(self.code_edit_gpt, self.prompt, self.steps):
+        for file_name, file_edited_content in execute_task_plan(self.prompt, self.steps, code_edit_gpt=self.code_edit_gpt, table_completion_gpt=self.table_completion_gpt):
             # TODO: use join path
             with open(self.project.repository_path + '/' + file_name, 'w') as f:
                 f.write(file_edited_content)

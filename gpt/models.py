@@ -136,7 +136,10 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
         # remove spaces between rows
         raw_rows = [re.sub(r'\s*,\s*|\s*,|,\s*', ',', raw_row) for raw_row in raw_rows]
         raw_table = [delimiter.join(headers)] + raw_rows
-        return csv_to_list(raw_table, headers=headers)
+        table = csv_to_list(raw_table, headers=headers)
+        # Remove empty keys
+        table = [{key: row[key] for key in row if key} for row in table]
+        return table
 
     if many:
         return [

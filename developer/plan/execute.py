@@ -1,7 +1,7 @@
 import os
 from developer.develop.develop import develop_task
 
-def execute_task_plan(code_edit_gpt, prompt, steps):
+def execute_task_plan(prompt, steps, code_edit_gpt, table_completion_gpt):
     for step in steps:
         if not step['file']:
             continue
@@ -18,6 +18,7 @@ def execute_task_plan(code_edit_gpt, prompt, steps):
             step=step,
             dependency_nodes=dependency_nodes,
             code_edit_gpt=code_edit_gpt,
+            table_completion_gpt=table_completion_gpt,
             **step
         )
 
