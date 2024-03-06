@@ -5,11 +5,8 @@ def execute_task_plan(prompt, steps, code_edit_gpt, table_completion_gpt):
     for step in steps:
         if not step['file']:
             continue
-        directory = os.path.dirname(step['file'])
         content = ""
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory, exist_ok=True)
-        elif os.path.exists(step['file']):
+        if os.path.exists(step['file']):
             with open(step['file'], 'r') as f:
                 content = f.read()
         dependency_nodes = [dependency_node for dependency_node in steps if dependency_node['name'] in step['dependencies']]

@@ -36,9 +36,9 @@ relevant resources:
         instruction = f"""
 current file: {file}
 develop a {node_type} named {name}
-inputs {inputs} 
-outputs {outputs} 
-parent class {parent_class} 
+inputs {inputs}
+outputs {outputs}
+parent class {parent_class}
 task: {task_step_description}
 relevant resources:
 {rendered_dependency_nodes}

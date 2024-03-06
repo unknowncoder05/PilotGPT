@@ -68,11 +68,16 @@ class Task:
         edited_files = []
         for file_name, file_edited_content in execute_task_plan(self.prompt, self.steps, code_edit_gpt=self.code_edit_gpt, table_completion_gpt=self.table_completion_gpt):
             # TODO: use join path
-            with open(self.project.repository_path + '/' + file_name, 'w') as f:
-                f.write(file_edited_content)
+
+            file_path=self.project.repository_path + '/' + file_name
+
+            directory = os.path.dirname(file_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            with open(file_path, 'w') as f:
+                f.write(file_edited_content if file_edited_content else '')
             # stage changes
-            edited_files.append(os.getcwd() + '/' +
-                                self.project.repository_path + '/' + file_name)
+            edited_files.append(os.getcwd() + '/' + file_path)
 
         # stage and commit changes
         self.project.repo.index.add(edited_files)

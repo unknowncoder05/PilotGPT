@@ -1,0 +1,21 @@
+version: '3'
+
+volumes:
+  local_postgres_data: {}
+  local_postgres_data_backups: {}
+
+services:
+  django: &django
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    image: pilot
+    volumes:
+      - ./:/app
+    env_file:
+      - ./.env
+    command: python main.py https://github.com/unknowncoder05/TestPilotGPT.git "add a ferrary car" main test-1 8436e2ac-8f2b-4d0b-9fd8-bc583b54ac8f
+#
+#  redis:
+#    image: redis:6.2
+#

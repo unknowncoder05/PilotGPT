@@ -58,17 +58,18 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
         max_tokens=-1,
         temperature=0,
         headers=["file_name", "relevance_rating"],
-        verbose_headers=["file name (required)", "relevance rating[0,10]"],
+        verbose_headers=["file name (string:required)", "relevance rating[0,10] (int)"],
         context_tables=[
             {
                 "name": "related files",
-                        "data": optimized_file_names
+                "data": optimized_file_names
             },
         ],
-        extra_requirements = ["write only tasks on the table", "relevance rating should be a numeric value"],
+        extra_requirements = ["relevance rating should be a numeric value"],
         chunk_able=True
     )
-    logger.debug(f"raw_relevant_files: {raw_relevant_files}")
+    logger.debug(f"optimized file names: {optimized_file_names}")
+    logger.debug(f"raw relevant files: {raw_relevant_files}")
     if raw_relevant_files:
         # TODO: proper cleaning
         for file_response in raw_relevant_files:
@@ -81,6 +82,10 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
             if not os.path.exists(file_name):
                 continue
             relevance_rating = file_response.get('relevance_rating', '0')
-            if relevance_rating.isnumeric() and int(relevance_rating) > minimum_file_relevance_rating:
+            if type(relevance_rating) == str and relevance_rating.isnumeric():
+                relevance_rating = int(relevance_rating)
+            if type(relevance_rating) == int:
+                continue
+            if  relevance_rating > minimum_file_relevance_rating:
                 relevant_directories.append(file_name)
     return relevant_directories

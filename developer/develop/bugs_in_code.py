@@ -32,5 +32,5 @@ don't remove any of the previously created resources or change their inputs or o
 {node_type} {name}: {content}
 """
         content = code_edit_gpt(content, instruction, max_tokens=-1)
-        logger.debug(f'bug {bug["name"]} solved: {content}')
+        logger.debug(f'bug \"{bug["name"]}\" solved: {content}')
     return content, solved_bugs
