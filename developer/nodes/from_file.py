@@ -3,9 +3,15 @@ from developer.nodes.from_file_cache import get_file_nodes_cache, save_file_node
 from get_logger import logger
 
 
-def get_file_nodes(table_completion_gpt, file_path=None, file_content=None, use_cache=True, headers=["node_type", "name", "inputs", "outputs", "parent class", "is parent", "short description"]):
+def get_file_nodes(
+        table_completion_gpt,
+        file_path=None, file_content=None, use_cache=True,
+        headers=["node_type", "name", "inputs", "outputs", "parent class", "is parent", "short description", "methods"],
+        verbose_headers=["node_type", "name", "inputs", "outputs", "is parent[True,False]", "parent class(the parent class of this class)", "short description", "methods:list"],
+    ):
     # TODO: make sure file_path or file_content
     GET_NODES_PROMPT_FORMAT = """from this file write the base nodes (variables, functions, function call, classes, ...)
+    Make sure that the classes that inherit from other classes get the field "parent class" filled
 file content:
 {file_content}"""
     if not file_content:
@@ -16,6 +22,7 @@ file content:
 
         # load cache if exists
         if use_cache:
+            logger.debug(f"Using cache for nodes in file {file_path}")
             cashed_nodes = get_file_nodes_cache(file_path, file_hash=file_hash)
             if type(cashed_nodes) is list:
                 return cashed_nodes
@@ -30,9 +37,9 @@ file content:
         prompt, max_tokens=-1,
         temperature=0,
         headers=headers,
-        verbose_headers=["node_type", "name", "inputs", "outputs", "is parent[True,False]", "parent class(the class from which it inherits)", "short description"],
+        verbose_headers=verbose_headers,
     )
-    logger.debug(f"file_nodes: {file_nodes}")
+    logger.debug(f"file_nodes {file_path}: {file_nodes}")
     nodes = []
     for raw_node in file_nodes:
         if len(raw_node) != len(headers):

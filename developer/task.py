@@ -66,10 +66,8 @@ class Task:
         logger.info(f'STEPS: {self.steps}')
         # modify files
         edited_files = []
-        for file_name, file_edited_content in execute_task_plan(self.prompt, self.steps, code_edit_gpt=self.code_edit_gpt, table_completion_gpt=self.table_completion_gpt):
+        for file_path, file_edited_content in execute_task_plan(self.prompt, self.steps, code_edit_gpt=self.code_edit_gpt, table_completion_gpt=self.table_completion_gpt):
             # TODO: use join path
-
-            file_path=self.project.repository_path + '/' + file_name
 
             directory = os.path.dirname(file_path)
             if directory:

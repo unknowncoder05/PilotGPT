@@ -16,29 +16,31 @@ def develop_task(
     outputs=[],
     parent_class=None,
     task_step_description=None,
+    methods=[None],
     **kwargs
 ):
     rendered_dependency_nodes = dict_to_csv(dependency_nodes, headers=[
-        "node_type", "name", "inputs", "outputs", "parent class", "short description", "file"], delimiter=';')
+        "node_type", "name", "inputs", "outputs", "parent class", "short description", "file", "methods"], delimiter=';')
     exists = len(content) > 0
     if exists:
         instruction = f"""
 current file: {file}
 modify the {node_type} named {name}
-inputs {inputs} 
-outputs {outputs} 
-parent class {parent_class} 
+inputs: {inputs} 
+outputs: {outputs} 
+parent class: {parent_class} 
+methods: {methods}
 task: {task_step_description}
 relevant resources:
 {rendered_dependency_nodes}
 """
     else:
-        instruction = f"""
-current file: {file}
+        instruction = f"""current file: {file}
 develop a {node_type} named {name}
-inputs {inputs}
-outputs {outputs}
-parent class {parent_class}
+inputs: {inputs}
+outputs: {outputs}
+parent class: {parent_class}
+methods: {methods}
 task: {task_step_description}
 relevant resources:
 {rendered_dependency_nodes}

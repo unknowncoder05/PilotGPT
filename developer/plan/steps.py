@@ -3,12 +3,12 @@ from get_logger import logger
 
 
 def get_task_plan_steps(prompt, relevant_nodes, new_nodes, table_completion_gpt,
-                        headers=['task_step_description',
+                        headers=['node','task_step_description',
                                  'dependencies'],
-                        verbose_headers=['step description',
+                        verbose_headers=['node name','step description',
                                          'dependent on resources'],
                         ):
-    TASK_PLAN_STEPS = """generate the general required actions on each node in order to complete the task: {prompt}"""
+    TASK_PLAN_STEPS = """generate the general required modifications a software developer should do on each resource in the resource table in order to complete the task: {prompt}"""
     # TODO: handle nodes with same name
 
     # join nodes
@@ -28,22 +28,28 @@ def get_task_plan_steps(prompt, relevant_nodes, new_nodes, table_completion_gpt,
         verbose_headers=verbose_headers,
         context_tables=[
             {
-                "name": "relevant resources",
+                "name": "resource",
                 "data": nodes
             },
         ],
+        extra_requirements={
+            "Make sure to reuse code that already exists, inherit and import properly"
+        }
     )
+    logger.debug(f"plan nodes: {nodes}")
     # join response data to nodes
     node_names = [node.get('name', '') for node in nodes if 'name' in node]
-    for i, raw_step in enumerate(raw_steps):
+    for raw_step in raw_steps:
         dependencies = [
             dependency
             for dependency in raw_step['dependencies'] if dependency in node_names
         ]
-        nodes[i]['task_step_description'] = raw_step['task_step_description']
-        nodes[i]['dependencies'] = dependencies
-        yield nodes[i]
-        break
+        for i, node in enumerate(nodes):
+            raw_step['node'] == node['name']
+            nodes[i]['task_step_description'] = raw_step['task_step_description']
+            nodes[i]['dependencies'] = dependencies
+            yield nodes[i]
+            break
 
 
 def log_task_steps(node_steps):

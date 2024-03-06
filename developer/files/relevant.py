@@ -84,7 +84,7 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
             relevance_rating = file_response.get('relevance_rating', '0')
             if type(relevance_rating) == str and relevance_rating.isnumeric():
                 relevance_rating = int(relevance_rating)
-            if type(relevance_rating) == int:
+            if type(relevance_rating) != int:
                 continue
             if  relevance_rating > minimum_file_relevance_rating:
                 relevant_directories.append(file_name)

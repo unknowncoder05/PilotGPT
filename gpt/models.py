@@ -17,9 +17,9 @@ def json_string_get_attribute(json_string, attribute):
     try:
         json_object = json.loads(json_string)
     except Exception as e:
-        raise Exception(f"Model response is not json serializable: {e}")
+        raise Exception(f"LLM response is not json serializable: {json_string} {e}")
     if attribute not in json_object:
-        raise Exception(f"Model jas no '{attribute}' key: {json_object}")
+        raise Exception(f"LLM has no '{attribute}' key: {json_object}")
     return json_object[attribute]
 
 def check_content_filter(prompt):
@@ -82,7 +82,18 @@ def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", t
         return response.choices[0].text.strip()
 
 
-def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_tables=[], verbose_headers=[], many=False, max_tokens=100, empty_field_response_token="", extra_requirements=[], temperature=0, chunk_able=False, *args, **kwargs):
+def gpt3_5_tables(
+        context: list,
+        headers: list,
+        model="gpt-3.5-turbo",
+        context_tables=[],
+        verbose_headers=[],
+        many=False,
+        max_tokens=100,
+        empty_field_response_token="",
+        extra_requirements=[],
+        temperature=0,
+        chunk_able=False, *args, **kwargs):
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls
     # TODO: validate verbose_headers and headers have the same length
     logger.debug('gpt3_5_tables call')
@@ -110,7 +121,7 @@ def gpt3_5_tables(context: list, headers: list, model="gpt-3.5-turbo", context_t
                 {"role": "system", "content": "use this related data if needed" + '\n' + '\n'.join(rendered_context_tables)}]
 
     messages = [
-        {"role": "system", "content": f"You are a software planning assistant who eturn a json with a 'table' key that is a list of objects"},
+        {"role": "system", "content": f"You are a software planning assistant who returns a json with a 'table' key that is a list of objects"},
         {"role": "system", "content": f"each object in the list should have the attributes {headers} which are defined like {verbose_headers}"},
         {"role": "user", "content": context},
         {"role": "system", "content": f"if a field can not be generated, just write {empty_field_response_token}"},
@@ -149,11 +160,7 @@ def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_fie
             return ''
 
     delimiter = ","
-    delimiter_verbose = "comma"
-    expected_result_type = f"{delimiter_verbose} separated values"
     # this is used so the model generates no extra explanations
-    start_token, end_token = "START", "END"
-    empty_response_token = start_token+" "+end_token
 
     if not headers:
         headers = list(options_table[0].keys())
@@ -182,29 +189,23 @@ def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_fie
         context_tables_messages = []
     rendered_options_table = dict_to_csv(options_table, delimiter=delimiter)
     messages = [
-        {"role": "system", "content": "You are a selector assistant"},
+        {"role": "system", "content": f"You are a software planning assistant who returns a json with a 'selected' key that is a list of {selector_field_verbose}"},
         {"role": "user", "content": context},
         {"role": "user", "content": rendered_options_table},
-        {"role": "system", "content": f"if no row can be generated, just left {empty_response_token if empty_response_token else 'empty space'}"},
-        {"role": "system", "content": f"expected response is a single line of {expected_result_type} of the identifier column '{selector_field_verbose}'"},
         {"role": "system", "content": f"if an option is not relevant enough, don't add it"},
-        {"role": "system", "content": f"expected response format = '{expected_result_type}'"},
-        {"role": "system", "content": f"the '{expected_result_type}' should start with {start_token} and should end in {end_token}"},
         *context_tables_messages,
     ]
     # log_messages(messages)
     response = client.chat.completions.create(
         model=model,
-        temperature=0.2,
+        response_format={ "type": "json_object" },
+        temperature=temperature,
         messages=messages,
     )
 
-    def clean_response(raw_response):
-        if raw_response == expected_result_type:
-            return []
-        raw_row = re.sub(f"^START\s*|\s*END$", "", raw_response)
+    def clean_response(response_list):
         list_of_selected_option = []
-        for raw_option_key in raw_row.split(delimiter):
+        for raw_option_key in response_list:
             option_key = raw_option_key.strip()
 
             # check options in table
@@ -214,14 +215,14 @@ def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_fie
                     break
         return list_of_selected_option
 
+
     if many:
         return [
-            clean_response(choice["message"]["content"])
+            clean_response(json_string_get_attribute(choice.message.content, 'selected'))
             for choice in response.choices
         ]
     else:
-        raw_response = response.choices[0].message.content
-        return clean_response(raw_response)
+        return clean_response(json_string_get_attribute(response.choices[0].message.content, 'selected'))
 
 
 def extract_text_between_tokens(text, start_token, end_token):
