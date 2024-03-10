@@ -9,10 +9,12 @@ def get_new_nodes(prompt, nodes, table_completion_gpt,
                                    "inputs(leave blank if class nodes)", "outputs(leave blank if class nodes)", "is parent[one of True,False]", "parent class(the class from which it inherits)", "methods: list"],
                   relevant_files_and_folders=None
     ):
-    GET_NEW_NODES_PROMPT_FORMAT = """from this nodes (variables, functions, classes, ...) add nodes that would need to be created to complete the task: {prompt}"""
+    GET_NEW_NODES_PROMPT_FORMAT = """from this resources (variables, functions, classes, ...) add resources that would need to be created to complete the task: {prompt}"""
     extra_requirements = [
-        "the name of the node should represent what it's functionalities and not be repeated if one already exists",
-        "follow the file structure and create files if needed (give them descriptive names)"
+        "the name of the resource should represent it's functionalities and not be repeated if one already exists",
+        "create new resources on already existing folders related to it's functionalities",
+        "follow the file structure for the file_directory_path and file_name (give them descriptive names)",
+        "if an other resource with the same functionalities exists, do not add a new one",
     ]
     # TODO: let it know relevant directories
     # prompt
@@ -25,7 +27,7 @@ def get_new_nodes(prompt, nodes, table_completion_gpt,
         verbose_headers=verbose_headers,
         context_tables=[
             {
-                "name": "related nodes",
+                "name": "related resources",
                 "data": nodes
             },
             {
@@ -51,10 +53,15 @@ def get_new_nodes(prompt, nodes, table_completion_gpt,
             else:
                 file_extension = ''
             file_directory_path = new_node.pop('file_directory_path')
-            file_name = new_node.pop('file_name')
-            if not file_name.endswith(file_extension):
-                file_name += file_extension
-            new_node['file'] = os.path.join(file_directory_path, file_name)
+            
+            # sometimes the LLM returns the whole path here
+            if os.path.isfile(file_directory_path):
+                new_node['file'] = file_directory_path
+            else:
+                file_name = new_node.pop('file_name')
+                if not file_name.endswith(file_extension):
+                    file_name += file_extension
+                new_node['file'] = os.path.join(file_directory_path, file_name)
             new_nodes.append(
                 new_node
             )

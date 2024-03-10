@@ -36,20 +36,23 @@ def get_file_nodes_cache(file_path, file_hash=None, cache_directory='pilot.cache
         return None
 
 
-def save_file_nodes_cache(file_path, nodes, file_hash=None, cache_directory='pilot.cache'):
+def save_file_nodes_cache(file_path, nodes, file_hash=None, cache_directory='pilot.cache', version=CACHE_VERSION):
     # TODO: use path.join
+    # getting cache path
     current_cache_directory = os.path.dirname(
         file_path) + "/" + cache_directory
     current_cache_file = current_cache_directory + \
         "/"+os.path.basename(file_path) + ".json"
-
+    
     if not os.path.exists(current_cache_directory):
         os.makedirs(current_cache_directory, exist_ok=True)
 
+    # get file hash so it can be checked for changes
     if not file_hash:
         with open(file_path, 'r') as f:
             file_content = f.read()
             file_hash = hashlib.sha256(file_content.encode()).hexdigest()
 
+    # save
     with open(current_cache_file, 'w') as f:
-        json.dump(dict(nodes=nodes, file_hash=file_hash), f, indent=4)
+        json.dump(dict(nodes=nodes, file_hash=file_hash, version=version), f, indent=4)

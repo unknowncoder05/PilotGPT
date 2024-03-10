@@ -3,9 +3,12 @@ from developer.clarifications import get_task_clarifications
 from developer.plan.task_plan import get_task_plan
 from developer.plan.execute import execute_task_plan
 from developer.plan.steps import log_task_steps
+from developer.files.relevant import get_relevant_files
+from developer.nodes.relevant import get_relevant_nodes
+from developer.nodes.new_nodes import get_new_nodes
+from developer.plan.steps import get_task_plan_steps
 import os
 from get_logger import logger
-
 
 class Task:
     project: Project
@@ -28,7 +31,37 @@ class Task:
             # TODO: make gpt create a good name
             self.commit_message = commit_message
         pass
-
+    
+    def get_relevant_files(self, exclude_files=[], rexclude_files=[]):
+        # Relevant files
+        relevant_files = get_relevant_files(
+            self.table_completion_gpt, self.prompt, self.project.repository_path,
+            exclude_files=exclude_files, rexclude_files=rexclude_files
+        )
+        return relevant_files
+    
+    def get_relevant_nodes(self, relevant_files):
+        # Relevant nodes in files
+        relevant_nodes = get_relevant_nodes(
+            prompt=self.prompt, selection_gpt=self.selection_gpt,
+            table_completion_gpt=self.table_completion_gpt, relevant_files=relevant_files
+        )
+        return relevant_nodes
+    
+    def get_new_nodes(self, relevant_nodes, relevant_files):
+        new_nodes = get_new_nodes(
+            prompt=self.prompt, nodes=relevant_nodes, table_completion_gpt=self.table_completion_gpt,
+            relevant_files_and_folders=relevant_files
+        )
+        return new_nodes
+    
+    def get_steps(self, relevant_nodes, new_nodes, ):
+        steps = get_task_plan_steps(
+            self.prompt, relevant_nodes, new_nodes,
+            table_completion_gpt=self.table_completion_gpt
+        )
+        return steps
+        
     def plan(self, ask_for_clarifications=False, exclude_files=[], rexclude_files=[]):
         if ask_for_clarifications:
             clarifications = get_task_clarifications(self.gpt, self.prompt)
