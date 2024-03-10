@@ -71,7 +71,7 @@ def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", t
         return response.choices[0].text.strip()
 
 
-def gpt3_5_tables(
+def gpt_tables(
         context: list,
         headers: list,
         model="gpt-3.5-turbo",
@@ -88,7 +88,7 @@ def gpt3_5_tables(
     """
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls
     # TODO: validate verbose_headers and headers have the same length
-    logger.debug('gpt3_5_tables call')
+    logger.debug('gpt_tables call')
 
     delimiter = ","
     # this is used so the model generates no extra explanations
@@ -135,11 +135,11 @@ def gpt3_5_tables(
         return raw_response
 
 
-def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_field_index=0, headers=None, verbose_headers=None, model="gpt-3.5-turbo", context_tables=[], many=False, max_tokens=None, empty_field_response_token="", temperature=0, chunk_able=False, *args, **kwargs):
+def gpt_table_rows_selection(context: list, options_table: dict, selector_field_index=0, headers=None, verbose_headers=None, model="gpt-3.5-turbo", context_tables=[], many=False, max_tokens=None, empty_field_response_token="", temperature=0, chunk_able=False, *args, **kwargs):
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls
     # TODO: validate verbose_headers and headers have the same length
     # TODO: validate if selector_field_index is valid
-    logger.debug('gpt3_5_table_rows_selection call')
+    logger.debug('gpt_table_rows_selection call')
 
     delimiter = ","
     # this is used so the model generates no extra explanations
@@ -262,7 +262,7 @@ def open_ai_model_func(model, type='completion'):
         return execute
     if type == 'table_completion':
         def execute(prompt_text, *args, **kwargs):
-            return gpt3_5_tables(prompt_text, model=model, *args, **kwargs)
+            return gpt_tables(prompt_text, model=model, *args, **kwargs)
         return execute
     if type == 'code_edit':
         def execute(prompt_text, instruction, *args, **kwargs):
@@ -270,5 +270,5 @@ def open_ai_model_func(model, type='completion'):
         return execute
     if type == 'selection_gpt':
         def execute(prompt_text, *args, **kwargs):
-            return gpt3_5_table_rows_selection(prompt_text, model=model, *args, **kwargs)
+            return gpt_table_rows_selection(prompt_text, model=model, *args, **kwargs)
         return execute
