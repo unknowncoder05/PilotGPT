@@ -22,7 +22,7 @@ def get_task_plan_steps(prompt, relevant_nodes, new_nodes, table_completion_gpt,
         prompt=prompt)
     raw_steps = table_completion_gpt(
         rendered_steps_prompt,
-        max_tokens=-1,
+        max_tokens=None,
         temperature=0,
         headers=headers,
         verbose_headers=verbose_headers,

@@ -13,8 +13,8 @@ handler = logging.StreamHandler()
 handler.setLevel(log_level)
 
 # create a logging format
-# formatter = logging.Formatter('%(asctime)s - %(pathname)s:%(lineno)d - %(funcName)s - %(levelname)s - %(message)s')
-formatter = logging.Formatter('%(message)s')
+formatter = logging.Formatter('%(asctime)s - %(pathname)s:%(lineno)d - %(funcName)s - %(levelname)s - %(message)s')
+# formatter = logging.Formatter('%(message)s')
 handler.setFormatter(formatter)
 
 # add the handlers to the logger

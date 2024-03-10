@@ -45,7 +45,7 @@ task: {task_step_description}
 relevant resources:
 {rendered_dependency_nodes}
 """
-    edited_file = code_edit_gpt(content, instruction, max_tokens=-1)
+    edited_file = code_edit_gpt(content, instruction, max_tokens=None)
     edited_file = optimize_code(
         content=edited_file, node_type=node_type, name=name, code_edit_gpt=code_edit_gpt)
     edited_file = human_readable_code(

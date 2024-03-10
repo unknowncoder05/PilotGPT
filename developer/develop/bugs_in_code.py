@@ -11,7 +11,6 @@ def bugs_in_code(
     prompt = f"""write the possible bugs of the following code for the {node_type} named {name}"""
     bugs = table_completion_gpt(
         prompt,
-        max_tokens=-1,
         temperature=0,
         headers=["name", "description", "solution", "criticality"],
         verbose_headers=["bug name(make it descriptive)",
@@ -31,6 +30,6 @@ def bugs_in_code(
 don't remove any of the previously created resources or change their inputs or outputs
 {node_type} {name}: {content}
 """
-        content = code_edit_gpt(content, instruction, max_tokens=-1)
+        content = code_edit_gpt(content, instruction, max_tokens=None)
         logger.debug(f'bug \"{bug["name"]}\" solved: {content}')
     return content, solved_bugs

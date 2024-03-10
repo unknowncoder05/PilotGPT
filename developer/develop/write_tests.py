@@ -53,5 +53,5 @@ outputs {outputs}
 parent class {parent_class} 
 {node_type} {name}: {content}
 """
-    edited_file = code_edit_gpt(test_file_content, instruction, max_tokens=-1)
+    edited_file = code_edit_gpt(test_file_content, instruction, max_tokens=None)
     return edited_file

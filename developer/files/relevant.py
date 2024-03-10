@@ -55,7 +55,7 @@ def get_relevant_files(table_completion_gpt, prompt, target_dir=None, files=None
     # table generation
     raw_relevant_files = table_completion_gpt(
         GET_RELEVANT_FILES.format(prompt=prompt),
-        max_tokens=-1,
+        max_tokens=None,
         temperature=0,
         headers=["file_name", "relevance_rating"],
         verbose_headers=["file name (string:required)", "relevance rating[0,10] (int)"],

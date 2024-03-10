@@ -1,4 +1,4 @@
-from developer.nodes.from_file import get_file_nodes
+from project.nodes.from_file import get_file_nodes
 from get_logger import logger
 
 
@@ -17,7 +17,7 @@ def get_relevant_nodes(prompt, selection_gpt, table_completion_gpt=None, relevan
         relevant_nodes_prompt = GET_RELEVANT_NODES_PROMPT_FORMAT.format(
             task=prompt)
         raw_relevant_nodes = selection_gpt(
-            relevant_nodes_prompt, max_tokens=-1,
+            relevant_nodes_prompt, max_tokens=None,
             options_table=file_nodes,
             temperature=0,
             headers=["name", "node_type", "inputs", "outputs", "parent class", "is parent", "short description", "methods"],

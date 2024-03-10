@@ -5,7 +5,9 @@ import os
 
 
 def send_event_aws(event, task_id):
-    event_source = os.getenv('EVENT_SOURCE', 'projectc-app.core')
+    event_source = os.getenv('EVENT_SOURCE')
+    if not event_source:
+        raise Exception("EVENT_SOURCE is not defined")
     event_task_detail_type = os.getenv(
         'EVENT_TASK_DETAIL_TYPE', 'task-process')
     region_name = os.getenv('AWS_REGION_NAME')

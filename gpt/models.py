@@ -10,7 +10,6 @@ import json
 openai.api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI()
 TOKENS_TO_CHARACTERS = 0.75
-MAX_TOKENS = 4097
 RECOMMENDED_TOKENS_PER_FILE = 3000
 
 def json_string_get_attribute(json_string, attribute):
@@ -34,17 +33,11 @@ def check_content_filter(prompt):
     return completions.choices[0].text
 
 
-def execute_completion_model(prompt, model="code-davinci-002", temperature=0, max_tokens=-1, many=False, *args, **kwargs):
+def execute_completion_model(prompt, model="code-davinci-002", temperature=0, max_tokens=None, many=False, *args, **kwargs):
     """
     Executes the completion model with the given parameters and returns the list of responses.
     """
     logger.debug('gpt_execute_completion_model call')
-    if max_tokens == -1:
-        max_tokens = int(MAX_TOKENS - len(prompt) / TOKENS_TO_CHARACTERS)
-        if max_tokens < 0:
-            logger.error(f'long prompt: {prompt}')
-            return ''
-
     response = openai.Completion.create(
         model=model,
         prompt=prompt,
@@ -58,22 +51,18 @@ def execute_completion_model(prompt, model="code-davinci-002", temperature=0, ma
         return response.choices[0].text.strip()
 
 
-def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", temperature=0, max_tokens=100, many=False, *args, **kwargs):
+def execute_code_edit_model(input, instruction, model="code-davinci-edit-001", temperature=0, max_tokens=None, many=False, *args, **kwargs):
     """
     Executes the completion model with the given parameters and returns the list of responses.
     """
     logger.debug('gpt_code_edit_model call')
-    if max_tokens == -1:
-        max_tokens = int(MAX_TOKENS - len(input) / TOKENS_TO_CHARACTERS)
-        if max_tokens < 0:
-            logger.error(f'long prompt: {input}')
-            return ''
 
     response = openai.Edit.create(
         model=model,
         input=input,
         temperature=temperature,
         instruction=instruction,
+        max_tokens=max_tokens,
         *args, **kwargs
     )
     if many:
@@ -89,19 +78,17 @@ def gpt3_5_tables(
         context_tables=[],
         verbose_headers=[],
         many=False,
-        max_tokens=100,
+        max_tokens=None,
         empty_field_response_token="",
         extra_requirements=[],
         temperature=0,
         chunk_able=False, *args, **kwargs):
+    """
+    completes a table and returns a lsit of objects
+    """
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls
     # TODO: validate verbose_headers and headers have the same length
     logger.debug('gpt3_5_tables call')
-    if max_tokens == -1:
-        max_tokens = int(MAX_TOKENS - len(context) / TOKENS_TO_CHARACTERS)
-        if max_tokens < 0:
-            logger.error(f'long prompt: {context}')
-            return ''
 
     delimiter = ","
     # this is used so the model generates no extra explanations
@@ -129,14 +116,14 @@ def gpt3_5_tables(
         *[{"role": "system", "content":extra_requirement} for extra_requirement in extra_requirements],
         {"role": "assistant", "content": rendered_headers},
     ]
-    # log_messages(messages)
     response = client.chat.completions.create(
         model=model,
         response_format={ "type": "json_object" },
         temperature=temperature,
+        max_tokens=max_tokens,
         messages=messages,
     )
-    logger.debug(response.choices[0].message.content)
+    logger.debug({'messages':messages, 'content':response.choices[0].message.content})
 
     if many:
         return [
@@ -148,16 +135,11 @@ def gpt3_5_tables(
         return raw_response
 
 
-def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_field_index=0, headers=None, verbose_headers=None, model="gpt-3.5-turbo", context_tables=[], many=False, max_tokens=100, empty_field_response_token="", temperature=0, chunk_able=False, *args, **kwargs):
+def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_field_index=0, headers=None, verbose_headers=None, model="gpt-3.5-turbo", context_tables=[], many=False, max_tokens=None, empty_field_response_token="", temperature=0, chunk_able=False, *args, **kwargs):
     # TODO: if chunk_able=True divide the data into chunks and make multiple calls
     # TODO: validate verbose_headers and headers have the same length
     # TODO: validate if selector_field_index is valid
     logger.debug('gpt3_5_table_rows_selection call')
-    if max_tokens == -1:
-        max_tokens = int(MAX_TOKENS - len(context) / TOKENS_TO_CHARACTERS)
-        if max_tokens < 0:
-            logger.error(f'long prompt: {context}')
-            return ''
 
     delimiter = ","
     # this is used so the model generates no extra explanations
@@ -200,6 +182,7 @@ def gpt3_5_table_rows_selection(context: list, options_table: dict, selector_fie
         model=model,
         response_format={ "type": "json_object" },
         temperature=temperature,
+        max_tokens=max_tokens,
         messages=messages,
     )
 
@@ -234,7 +217,7 @@ def extract_text_between_tokens(text, start_token, end_token):
         return None
 
 
-def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens=100, many=False, *args, **kwargs):
+def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens=None, many=False, *args, **kwargs):
     """
     Executes the completion model with the given parameters and returns the list of responses.
     """
@@ -259,6 +242,7 @@ def execute_chat_code_model(input, instruction, model, temperature=0, max_tokens
         model=model,
         temperature=temperature,
         messages=context,
+        max_tokens=max_tokens,
         *args, **kwargs
     )
     if many:

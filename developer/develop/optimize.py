@@ -10,5 +10,5 @@ reduce the memory usage if applies
 don't remove any of the previously created resources or change their inputs and outputs
 {node_type} {name}: {content}
 """
-    edited_file = code_edit_gpt(content, instruction, max_tokens=-1)
+    edited_file = code_edit_gpt(content, instruction, max_tokens=None)
     return edited_file

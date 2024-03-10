@@ -1,0 +1,21 @@
+version: '3'
+
+volumes:
+  local_postgres_data: {}
+  local_postgres_data_backups: {}
+
+services:
+  django: &django
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    image: pilot
+    volumes:
+      - ./:/app
+    env_file:
+      - ./.env
+    command: python sandbox.py
+#
+#  redis:
+#    image: redis:6.2
+#

@@ -19,7 +19,7 @@ def get_new_nodes(prompt, nodes, table_completion_gpt,
     new_nodes_prompt = GET_NEW_NODES_PROMPT_FORMAT.format(prompt=prompt)
     raw_new_nodes = table_completion_gpt(
         new_nodes_prompt,
-        max_tokens=-1,
+        max_tokens=None,
         temperature=0,
         headers=headers,
         verbose_headers=verbose_headers,
