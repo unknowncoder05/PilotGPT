@@ -3,6 +3,7 @@ import os
 import hashlib
 from get_logger import logger
 
+CACHE_VERSION = "1.0.1"
 
 def get_file_nodes_cache(file_path, file_hash=None, cache_directory='pilot.cache'):
     # TODO: use path.join
@@ -23,6 +24,10 @@ def get_file_nodes_cache(file_path, file_hash=None, cache_directory='pilot.cache
                 file_content = f.read()
                 file_hash = hashlib.sha256(file_content.encode()).hexdigest()
         if cache.get('file_hash') != file_hash:
+            return None
+        
+        if cache.get('version') != CACHE_VERSION:
+            logger.error(f"CACHE OLD VERSIOn: {CACHE_VERSION} != {cache.get('version')}")
             return None
 
         return cache.get('nodes')

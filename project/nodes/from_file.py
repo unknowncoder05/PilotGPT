@@ -1,5 +1,5 @@
 import hashlib
-from .from_file_cache import get_file_nodes_cache, save_file_nodes_cache
+from .from_file_cache import get_file_nodes_cache, save_file_nodes_cache, CACHE_VERSION
 from get_logger import logger
 
 GET_NODES_PROMPT_FORMAT = """from the following file write the base resources 
@@ -56,6 +56,6 @@ def get_file_nodes(
     # save cache
     if use_cache or force_cache:
         logger.debug(f"Saving cache for {file_path}")
-        save_file_nodes_cache(file_path, nodes=nodes, file_hash=file_hash)
+        save_file_nodes_cache(file_path, nodes=nodes, file_hash=file_hash, version=CACHE_VERSION)
 
     return nodes
